@@ -10,6 +10,8 @@ QB_USERNAME = os.getenv('ptkangel')
 QB_PASSWORD = os.getenv('trickangel1723')
 GOFILE_API_KEY = os.getenv('KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j')
 
+if not QB_URL or not QB_USERNAME or not QB_PASSWORD:
+    raise ValueError("As variáveis de ambiente para o qBittorrent não estão definidas corretamente.")
 # Inicializar bot e qBittorrent
 bot = Bot(token='7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM')
 qb = Client(QB_URL)

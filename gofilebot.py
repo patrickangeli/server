@@ -5,14 +5,13 @@ from telegram.ext import Updater, CommandHandler, CallbackContext
 from qbittorrent import Client
 
 # Configurações
-TELEGRAM_TOKEN = os.getenv('7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM')
 QB_URL = os.getenv('http://127.0.0.1:8080')
 QB_USERNAME = os.getenv('ptkangel')
 QB_PASSWORD = os.getenv('trickangel1723')
 GOFILE_API_KEY = os.getenv('KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j')
 
 # Inicializar bot e qBittorrent
-bot = Bot(token=TELEGRAM_TOKEN)
+bot = Bot(token='7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM')
 qb = Client(QB_URL)
 qb.login(QB_USERNAME, QB_PASSWORD)
 

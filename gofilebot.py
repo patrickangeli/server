@@ -37,7 +37,7 @@ bot_active = True  # Definir uma variável global para o estado do bot
 async def toggle_bot(update: Update, context: CallbackContext) -> None:
     global bot_active
     bot_active = not bot_active
-    status = 'ativado' se bot_active else 'desativado'
+    status = 'ativado' if bot_active else 'desativado'
     await update.message.reply_text(f"Bot {status}!")
 
 # Comando para realizar o Speedtest

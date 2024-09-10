@@ -3,14 +3,15 @@ import requests
 import speedtest
 import time
 import libtorrent as lt
-from telegram import Update, Bot, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackContext, MessageHandler, filters
-import hashlib
+import datetime
+from telegram import Update, Bot
+from telegram.ext import Application, CommandHandler, CallbackContext
+from telegram.ext import MessageHandler, filters
+from telegram import ReplyKeyboardMarkup
 
 # Configurações
 GOFILE_API_KEY = "KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j"
 bot_token = '7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM'
-MAX_FILE_NAME_LENGTH = 64  # Reduzindo para um valor bem seguro
 
 # Função para fazer upload do arquivo para o GoFile
 def upload_file(file_path):
@@ -30,7 +31,7 @@ def upload_file(file_path):
         print(f"Erro ao enviar o arquivo: {e}")
         return None
 
-# Função para realizar o Speedtest
+# Comando para realizar o Speedtest
 async def run_speedtest(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text("Executando Speedtest, por favor, aguarde...")
 
@@ -48,105 +49,118 @@ async def run_speedtest(update: Update, context: CallbackContext) -> None:
 
     await update.message.reply_text(response_message, parse_mode='Markdown')
 
-def sanitize_filename(filename):
-    # Remove invalid characters and truncate if necessary
-    invalid_chars = '<>:"/\\|?*'
-    filename = ''.join(c for c in filename if c not in invalid_chars)
-    filename = filename.strip()
-    if len(filename) > MAX_FILE_NAME_LENGTH:
-        base, ext = os.path.splitext(filename)
-        filename = base[:MAX_FILE_NAME_LENGTH - len(ext)] + ext
-    return filename
-
-def generate_short_filename(original_name):
-    base, ext = os.path.splitext(original_name)
-    hash_object = hashlib.md5(base.encode())
-    hash_str = hash_object.hexdigest()[:8]
-    new_name = f"{hash_str}{ext}"
-    return new_name
-
-def get_file_name_from_torrent(torrent_path):
-  try:
-    info = lt.torrent_info(torrent_path)
-    # Get the first filename from the list (adjust if needed)
-    original_name = info.files().name()[0]
-    return sanitize_filename(original_name)
-  except Exception as e:
-    print(f"Erro ao obter o nome do arquivo do torrent: {e}")
-    return "unknown_file"
-
-async def start_download(update: Update, context: CallbackContext) -> None:
-    if len(context.args) == 0:
-        await update.message.reply_text("Por favor, forneça o caminho do arquivo torrent para iniciar o download.")
-        return
-    
-    torrent_path = context.args[0]  # Caminho do arquivo .torrent
-    await update.message.reply_text(f'Processando torrent: `{torrent_path}`')
-
-    try:
-        file_name = get_file_name_from_torrent(torrent_path)
-        await update.message.reply_text(f"Nome do arquivo: `{file_name}`")
-
-        # Simulação de download (substitua isso por sua lógica de download real se necessário)
-        time.sleep(10)  # Simulando 10 segundos de download
-
-        # Caminho de arquivo baixado
-        download_dir = "/home/downloads"  # Defina um diretório de download fixo
-        os.makedirs(download_dir, exist_ok=True)  # Garante que o diretório existe
-        file_path = os.path.join(download_dir, file_name)
-
-        # Simule a criação do arquivo
-        with open(file_path, 'w') as f:
-            f.write("Conteúdo simulado do arquivo")
-
-        # Upload para GoFile
-        gofile_link = upload_file(file_path)
-
-        if gofile_link:
-            await update.message.reply_text(f"Download concluído! Arquivo enviado: {gofile_link}")
-            os.remove(file_path)
-            await update.message.reply_text(f"Arquivo `{file_path}` deletado com sucesso!")
-        else:
-            await update.message.reply_text("Falha ao fazer upload do arquivo.")
-    except Exception as e:
-        await update.message.reply_text(f"Erro durante o processamento: {str(e)}")
 # Função para mostrar o menu de instruções
 async def show_menu(update: Update, context: CallbackContext) -> None:
     menu_message = (
         "Bem-vindo! Aqui estão os comandos disponíveis:\n\n"
-        "/start_download <caminho_arquivo_torrent> - Inicia o download a partir do arquivo torrent.\n"
+        "/start_download <magnet_link ou .torrent URL> - Inicia o download a partir de um link magnet ou torrent.\n"
         "/speedtest - Executa um teste de velocidade de internet.\n"
-        "/help - Mostra este menu de ajuda.\n"
+        "/upload_to_gofile <nome_arquivo> - Faz upload do arquivo para o GoFile.\n"
+        "/toggle_bot - Ativa ou desativa o bot.\n"
     )
     await update.message.reply_text(menu_message)
+
+# Função para baixar torrent usando libtorrent e fazer upload para GoFile
+async def start_download(update: Update, context: CallbackContext) -> None:
+    if len(context.args) == 0:
+        await update.message.reply_text("Por favor, forneça um link magnet ou um URL de arquivo torrent.")
+        return
+    
+    link = context.args[0]
+    params = {
+        'save_path': './Torrent/',  # Caminho de salvamento do arquivo
+        'storage_mode': lt.storage_mode_t(2),
+    }
+
+    # Configura sessão de libtorrent
+    ses = lt.session()
+    ses.listen_on(6881, 6891)
+
+    # Se for um arquivo .torrent
+    if link.endswith('.torrent'):
+        import wget
+        from torf import Torrent
+
+        if os.path.exists('torrent.torrent'):
+            os.remove('torrent.torrent')
+
+        # Baixar arquivo torrent
+        wget.download(link, 'torrent.torrent')
+        t = Torrent.read('torrent.torrent')
+        link = str(t.magnet(name=True, size=False, trackers=False, tracker=False))
+
+    await update.message.reply_text(f'Baixando `{link}`... Monitorando progresso.')
+
+    # Iniciar o download
+    handle = lt.add_magnet_uri(ses, link, params)
+    handle.set_sequential_download(0)
+    ses.start_dht()
+
+    # Aguarda até que os metadados sejam baixados
+    while not handle.has_metadata():
+        await update.message.reply_text('Baixando Metadados...')
+        time.sleep(1)
+
+    await update.message.reply_text('Metadados baixados! Iniciando download...')
+
+    # Baixar o arquivo
+    while handle.status().state != lt.torrent_status.seeding:
+        s = handle.status()
+        state_str = ['queued', 'checking', 'downloading metadata',
+                     'downloading', 'finished', 'seeding', 'allocating']
+        progress_message = (
+            f'{handle.name()} - {s.progress * 100:.2f}% completo\n'
+            f'Download: {s.download_rate / 1000:.1f} kB/s\n'
+            f'Upload: {s.upload_rate / 1000:.1f} kB/s\n'
+            f'Peers: {s.num_peers}\n'
+            f'Estado: {state_str[s.state]}'
+        )
+        await update.message.reply_text(progress_message)
+        time.sleep(5)
+
+    await update.message.reply_text(f'Download concluído: {handle.name()}')
+
+    # Caminho do arquivo baixado
+    file_path = os.path.join(params['save_path'], handle.name())
+
+    # Upload para GoFile
+    gofile_link = upload_file(file_path)
+    if gofile_link:
+        await update.message.reply_text(f"Arquivo enviado para GoFile: {gofile_link}")
+        
+        # Deletar arquivo após upload
+        try:
+            os.remove(file_path)
+            await update.message.reply_text(f"Arquivo `{file_path}` deletado com sucesso.")
+        except Exception as e:
+            await update.message.reply_text(f"Erro ao deletar o arquivo: {e}")
+    else:
+        await update.message.reply_text("Erro ao fazer upload do arquivo.")
 
 # Criação de um menu flutuante com as opções
 def get_reply_keyboard():
     custom_keyboard = [
         ['/start_download', '/speedtest'],
+        ['/upload_to_gofile', '/toggle_bot'],
         ['/help']
     ]
     return ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
 
-# Configurar o menu flutuante
+# Inicializar o bot com a nova forma de construção
+application = Application.builder().token(bot_token).build()
+
+# Configurar comandos do bot
+application.add_handler(CommandHandler('start_download', start_download))
+application.add_handler(CommandHandler('speedtest', run_speedtest))
+application.add_handler(CommandHandler('help', show_menu))
+
+# Configurar o menu flutuante (usando um MessageHandler para capturar a digitação de '/')
 async def show_floating_menu(update: Update, context: CallbackContext) -> None:
     reply_markup = get_reply_keyboard()
     await update.message.reply_text("Escolha uma opção:", reply_markup=reply_markup)
 
-def main() -> None:
-    # Inicializar o bot
-    application = Application.builder().token(bot_token).build()
+# Adicionando o handler do menu flutuante
+application.add_handler(MessageHandler(filters.Regex('^/$'), show_floating_menu))
 
-    # Configurar comandos do bot
-    application.add_handler(CommandHandler('start_download', start_download))
-    application.add_handler(CommandHandler('speedtest', run_speedtest))
-    application.add_handler(CommandHandler('help', show_menu))
-
-    # Adicionar o handler do menu flutuante
-    application.add_handler(MessageHandler(filters.Regex('^/$'), show_floating_menu))
-
-    # Iniciar o bot
-    application.run_polling()
-
-if __name__ == '__main__':
-    main()
+# Iniciar o bot
+application.run_polling()

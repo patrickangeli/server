@@ -48,19 +48,27 @@ async def run_speedtest(update: Update, context: CallbackContext) -> None:
 
     await update.message.reply_text(response_message, parse_mode='Markdown')
 
-# Função para extrair o nome do arquivo a partir do arquivo torrent
-def get_file_name_from_torrent(torrent_path):
+# Função para extrair o nome do arquivo a partir do arquivo torrent, com limite de tamanho de nome
+def get_file_name_from_torrent(torrent_path, max_length=100):
     try:
         # Criar um objeto de informação do torrent a partir do arquivo torrent
         info = lt.torrent_info(torrent_path)
         # Pegar o nome do primeiro arquivo no torrent (ou o nome do diretório, se for uma pasta)
         if info.num_files() > 1:
-            return info.name()  # Retorna o nome da pasta principal se houver vários arquivos
+            file_name = info.name()  # Retorna o nome da pasta principal se houver vários arquivos
         else:
-            return info.files().file_name(0)  # Retorna o nome do único arquivo no torrent
+            file_name = info.files().file_name(0)  # Retorna o nome do único arquivo no torrent
+
+        # Limitar o comprimento do nome do arquivo
+        if len(file_name) > max_length:
+            file_name = file_name[:max_length]  # Cortar o nome para o tamanho máximo permitido
+            print(f"Nome do arquivo truncado para: {file_name}")
+        
+        return file_name
     except Exception as e:
         print(f"Erro ao obter o nome do arquivo do torrent: {e}")
         return None
+
 
 # Comando para iniciar o download e fazer o upload após completar (usando o arquivo .torrent)
 async def start_download(update: Update, context: CallbackContext) -> None:

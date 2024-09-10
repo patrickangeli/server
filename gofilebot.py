@@ -51,27 +51,27 @@ async def run_speedtest(update: Update, context: CallbackContext) -> None:
 async def show_menu(update: Update, context: CallbackContext) -> None:
     menu_message = (
         "Bem-vindo! Aqui estão os comandos disponíveis:\n\n"
-        "/start_download <magnet_link> - Inicia o download a partir de um link magnet.\n"
+        "/start_download <torrent_name> - Inicia o download a partir do nome do torrent.\n"
         "/speedtest - Executa um teste de velocidade de internet.\n"
         "/upload_to_gofile <nome_arquivo> - Faz upload do arquivo para o GoFile.\n"
         "/toggle_bot - Ativa ou desativa o bot.\n"
     )
     await update.message.reply_text(menu_message)
 
-# Comando para iniciar o download e fazer o upload após completar (simulação sem qBittorrent)
+# Comando para iniciar o download e fazer o upload após completar (simulação com nome do torrent)
 async def start_download(update: Update, context: CallbackContext) -> None:
     if len(context.args) == 0:
-        await update.message.reply_text("Por favor, forneça um link magnet para iniciar o download.")
+        await update.message.reply_text("Por favor, forneça o nome do torrent para iniciar o download.")
         return
     
-    magnet_link = context.args[0]
-    await update.message.reply_text(f'Download do magnet link `{magnet_link}` iniciado! Monitorando progresso (simulado)...')
+    torrent_name = context.args[0]
+    await update.message.reply_text(f'Download do torrent `{torrent_name}` iniciado! Monitorando progresso (simulado)...')
 
     # Simulação de download (substitua isso por sua lógica de download real se necessário)
     time.sleep(10)  # Simulando 10 segundos de download
 
     # Simulação de caminho de arquivo
-    file_path = f"/home/{magnet_link.split(':')[-1]}.file"  # Simulando caminho do arquivo
+    file_path = f"/home/{torrent_name}"  # Simulando caminho do arquivo
 
     # Upload para GoFile após o download simulado
     gofile_link = upload_file(file_path)

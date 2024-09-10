@@ -1,23 +1,25 @@
 import os
 import requests
+import speedtest
 from telegram import Update, Bot
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackContext
 from qbittorrent import Client
 
 # Configurações
 GOFILE_API_KEY = "KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j"
+qb = Client('http://localhost:8080/')  # Certifique-se de configurar corretamente o cliente qbittorrent
 
-# Inicializar bot e qBittorrent
-bot = Bot(token='7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM')
+# Inicializar bot
+bot_token = '7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM'
 
 # Comando para iniciar o download
-def start_download(update: Update, context: CallbackContext) -> None:
+async def start_download(update: Update, context: CallbackContext) -> None:
     magnet_link = context.args[0]
     qb.download_from_link(magnet_link)
-    update.message.reply_text('Download iniciado!')
+    await update.message.reply_text('Download iniciado!')
 
 # Comando para enviar arquivo para o GoFile
-def upload_to_gofile(update: Update, context: CallbackContext) -> None:
+async def upload_to_gofile(update: Update, context: CallbackContext) -> None:
     torrent_name = context.args[0]
     torrent = qb.get_torrent(torrent_name)
     file_path = torrent['save_path'] + torrent['name']
@@ -28,17 +30,18 @@ def upload_to_gofile(update: Update, context: CallbackContext) -> None:
             files={'file': file},
             headers={'Authorization': GOFILE_API_KEY}
         )
-    update.message.reply_text(f"Arquivo enviado: {response.json()['data']['downloadPage']}")
+    await update.message.reply_text(f"Arquivo enviado: {response.json()['data']['downloadPage']}")
 
 # Comando para ativar/desativar o bot
-def toggle_bot(update: Update, context: CallbackContext) -> None:
+bot_active = True  # Definir uma variável global para o estado do bot
+async def toggle_bot(update: Update, context: CallbackContext) -> None:
     global bot_active
     bot_active = not bot_active
-    status = 'ativado' if bot_active else 'desativado'
-    update.message.reply_text(f"Bot {status}!")
+    status = 'ativado' se bot_active else 'desativado'
+    await update.message.reply_text(f"Bot {status}!")
 
 # Comando para realizar o Speedtest
-def run_speedtest(update: Update, context: CallbackContext) -> None:
+async def run_speedtest(update: Update, context: CallbackContext) -> None:
     st = speedtest.Speedtest()
     st.download()
     st.upload()
@@ -51,13 +54,13 @@ def run_speedtest(update: Update, context: CallbackContext) -> None:
         f"Ping: {results['ping']} ms\n"
         f"Servidor: {results['server']['name']} ({results['server']['country']})"
     )
-    update.message.reply_text(response_message, parse_mode='Markdown')
+    await update.message.reply_text(response_message, parse_mode='Markdown')
 
 # Comando para exibir o status do download
-def download_status(update: Update, context: CallbackContext) -> None:
+async def download_status(update: Update, context: CallbackContext) -> None:
     torrents = qb.torrents()
     if not torrents:
-        update.message.reply_text('Nenhum download em andamento.')
+        await update.message.reply_text('Nenhum download em andamento.')
         return
 
     status_messages = []
@@ -84,17 +87,17 @@ def download_status(update: Update, context: CallbackContext) -> None:
         )
         status_messages.append(status_message)
 
-    update.message.reply_text("\n\n".join(status_messages), parse_mode='Markdown')
+    await update.message.reply_text("\n\n".join(status_messages), parse_mode='Markdown')
+
+# Inicializar o bot com a nova forma de construção
+application = Application.builder().token(bot_token).build()
 
 # Configurar comandos do bot
-updater = Updater(token='7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM')
-dispatcher = updater.dispatcher
-dispatcher.add_handler(CommandHandler('start_download', start_download))
-dispatcher.add_handler(CommandHandler('upload_to_gofile', upload_to_gofile))
-dispatcher.add_handler(CommandHandler('toggle_bot', toggle_bot))
-dispatcher.add_handler(CommandHandler('speedtest', run_speedtest))
-dispatcher.add_handler(CommandHandler('download_status', download_status))
+application.add_handler(CommandHandler('start_download', start_download))
+application.add_handler(CommandHandler('upload_to_gofile', upload_to_gofile))
+application.add_handler(CommandHandler('toggle_bot', toggle_bot))
+application.add_handler(CommandHandler('speedtest', run_speedtest))
+application.add_handler(CommandHandler('download_status', download_status))
 
 # Iniciar o bot
-updater.start_polling()
-updater.idle()
+application.run_polling()

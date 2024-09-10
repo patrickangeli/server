@@ -11,8 +11,6 @@ if not QB_URL or not QB_USERNAME or not QB_PASSWORD:
     raise ValueError("As variáveis de ambiente para o qBittorrent não estão definidas corretamente.")
 # Inicializar bot e qBittorrent
 bot = Bot(token='7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM')
-qb = Client(QB_URL)
-qb.login(QB_USERNAME, QB_PASSWORD)
 
 # Comando para iniciar o download
 def start_download(update: Update, context: CallbackContext) -> None:
@@ -91,7 +89,7 @@ def download_status(update: Update, context: CallbackContext) -> None:
     update.message.reply_text("\n\n".join(status_messages), parse_mode='Markdown')
 
 # Configurar comandos do bot
-updater = Updater(token=TELEGRAM_TOKEN)
+updater = Updater(token='7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM')
 dispatcher = updater.dispatcher
 dispatcher.add_handler(CommandHandler('start_download', start_download))
 dispatcher.add_handler(CommandHandler('upload_to_gofile', upload_to_gofile))

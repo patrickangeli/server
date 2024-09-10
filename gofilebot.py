@@ -5,9 +5,6 @@ from telegram.ext import Updater, CommandHandler, CallbackContext
 from qbittorrent import Client
 
 # Configurações
-QB_URL = "http://127.0.0.1:8080"
-QB_USERNAME = "ptkangel"
-QB_PASSWORD = "trickangel1723"
 GOFILE_API_KEY = "KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j"
 
 if not QB_URL or not QB_USERNAME or not QB_PASSWORD:

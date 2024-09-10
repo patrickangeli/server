@@ -48,26 +48,34 @@ async def run_speedtest(update: Update, context: CallbackContext) -> None:
 
     await update.message.reply_text(response_message, parse_mode='Markdown')
 
-# Função para gerar um nome de arquivo curto e único
+def sanitize_filename(filename):
+    # Remove caracteres inválidos para nomes de arquivo
+    invalid_chars = '<>:"/\\|?*'
+    for char in invalid_chars:
+        filename = filename.replace(char, '')
+    return filename.strip()
+
 def generate_short_filename(original_name):
-    _, ext = os.path.splitext(original_name)
-    hash_object = hashlib.md5(original_name.encode())
+    base, ext = os.path.splitext(original_name)
+    hash_object = hashlib.md5(base.encode())
     hash_str = hash_object.hexdigest()[:8]
-    new_name = f"file_{hash_str}{ext}"
-    if len(new_name) > MAX_FILE_NAME_LENGTH:
-        new_name = new_name[:MAX_FILE_NAME_LENGTH - len(ext)] + ext
+    new_name = f"{hash_str}{ext}"
     return new_name
 
-# Função para extrair e processar o nome do arquivo a partir do arquivo torrent
 def get_file_name_from_torrent(torrent_path):
     try:
         info = lt.torrent_info(torrent_path)
         original_name = info.name()
-        return generate_short_filename(original_name)
+        sanitized_name = sanitize_filename(original_name)
+        
+        if len(sanitized_name) <= MAX_FILE_NAME_LENGTH:
+            return sanitized_name
+        else:
+            return generate_short_filename(sanitized_name)
     except Exception as e:
         print(f"Erro ao obter o nome do arquivo do torrent: {e}")
         return generate_short_filename("unknown_file")
-
+        
 # Comando para iniciar o download e fazer o upload após completar (usando o arquivo .torrent)
 async def start_download(update: Update, context: CallbackContext) -> None:
     if len(context.args) == 0:
@@ -78,7 +86,7 @@ async def start_download(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(f'Download a partir do torrent `{torrent_path}` iniciado! Monitorando progresso...')
 
     file_name = get_file_name_from_torrent(torrent_path)
-    await update.message.reply_text(f"Nome do arquivo gerado: `{file_name}`")
+    await update.message.reply_text(f"Nome do arquivo: `{file_name}`")
 
     time.sleep(10)  # Simulando 10 segundos de download
     file_path = os.path.join("/home", file_name)

@@ -74,7 +74,6 @@ async def start_download(update: Update, context: CallbackContext) -> None:
 
     # Configura sessão de libtorrent
     ses = lt.session()
-    ses.listen_on(6881, 6891)
 
     # Se for um arquivo .torrent
     if link.endswith('.torrent'):
@@ -91,13 +90,15 @@ async def start_download(update: Update, context: CallbackContext) -> None:
 
     await update.message.reply_text(f'Baixando `{link}`... Monitorando progresso.')
 
-    # Iniciar o download
-    handle = lt.add_magnet_uri(ses, link, params)
-    handle.set_sequential_download(0)
-    ses.start_dht()
+    # Usando a nova abordagem com `parse_magnet_uri` e `add_torrent`
+    torrent_params = lt.parse_magnet_uri(link)
+    torrent_params.save_path = './Torrent/'  # Defina o caminho de salvamento
+    torrent_params.flags |= lt.torrent_flags.sequential_download
 
-    # Aguarda até que os metadados sejam baixados
-    while not handle.has_metadata():
+    handle = ses.add_torrent(torrent_params)
+
+    # Monitorando o progresso
+    while not handle.status().has_metadata:
         await update.message.reply_text('Baixando Metadados...')
         time.sleep(1)
 

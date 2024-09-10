@@ -7,7 +7,6 @@ from qbittorrent import Client
 
 # Configurações
 GOFILE_API_KEY = "KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j"
-qb = Client('http://localhost:8080/')  # Certifique-se de configurar corretamente o cliente qbittorrent
 
 # Inicializar bot
 bot_token = '7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM'

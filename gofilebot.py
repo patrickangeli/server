@@ -49,11 +49,14 @@ async def run_speedtest(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(response_message, parse_mode='Markdown')
 
 def sanitize_filename(filename):
-    # Remove caracteres inválidos para nomes de arquivo
+    # Remove invalid characters and truncate if necessary
     invalid_chars = '<>:"/\\|?*'
-    for char in invalid_chars:
-        filename = filename.replace(char, '')
-    return filename.strip()
+    filename = ''.join(c for c in filename if c not in invalid_chars)
+    filename = filename.strip()
+    if len(filename) > MAX_FILE_NAME_LENGTH:
+        base, ext = os.path.splitext(filename)
+        filename = base[:MAX_FILE_NAME_LENGTH - len(ext)] + ext
+    return filename
 
 def generate_short_filename(original_name):
     base, ext = os.path.splitext(original_name)
@@ -66,43 +69,46 @@ def get_file_name_from_torrent(torrent_path):
     try:
         info = lt.torrent_info(torrent_path)
         original_name = info.name()
-        sanitized_name = sanitize_filename(original_name)
-        
-        if len(sanitized_name) <= MAX_FILE_NAME_LENGTH:
-            return sanitized_name
-        else:
-            return generate_short_filename(sanitized_name)
+        return sanitize_filename(original_name)
     except Exception as e:
         print(f"Erro ao obter o nome do arquivo do torrent: {e}")
-        return generate_short_filename("unknown_file")
-        
-# Comando para iniciar o download e fazer o upload após completar (usando o arquivo .torrent)
+        return "unknown_file"
+
 async def start_download(update: Update, context: CallbackContext) -> None:
     if len(context.args) == 0:
         await update.message.reply_text("Por favor, forneça o caminho do arquivo torrent para iniciar o download.")
         return
     
     torrent_path = context.args[0]  # Caminho do arquivo .torrent
-    await update.message.reply_text(f'Download a partir do torrent `{torrent_path}` iniciado! Monitorando progresso...')
+    await update.message.reply_text(f'Processando torrent: `{torrent_path}`')
 
-    file_name = get_file_name_from_torrent(torrent_path)
-    await update.message.reply_text(f"Nome do arquivo: `{file_name}`")
+    try:
+        file_name = get_file_name_from_torrent(torrent_path)
+        await update.message.reply_text(f"Nome do arquivo: `{file_name}`")
 
-    time.sleep(10)  # Simulando 10 segundos de download
-    file_path = os.path.join("/home", file_name)
+        # Simulação de download (substitua isso por sua lógica de download real se necessário)
+        time.sleep(10)  # Simulando 10 segundos de download
 
-    gofile_link = upload_file(file_path)
+        # Caminho de arquivo baixado
+        download_dir = "/home/downloads"  # Defina um diretório de download fixo
+        os.makedirs(download_dir, exist_ok=True)  # Garante que o diretório existe
+        file_path = os.path.join(download_dir, file_name)
 
-    if gofile_link:
-        await update.message.reply_text(f"Download concluído! Arquivo enviado: {gofile_link}")
-        try:
+        # Simule a criação do arquivo
+        with open(file_path, 'w') as f:
+            f.write("Conteúdo simulado do arquivo")
+
+        # Upload para GoFile
+        gofile_link = upload_file(file_path)
+
+        if gofile_link:
+            await update.message.reply_text(f"Download concluído! Arquivo enviado: {gofile_link}")
             os.remove(file_path)
             await update.message.reply_text(f"Arquivo `{file_path}` deletado com sucesso!")
-        except Exception as e:
-            await update.message.reply_text(f"Erro ao deletar o arquivo: {e}")
-    else:
-        await update.message.reply_text("Falha ao fazer upload do arquivo.")
-
+        else:
+            await update.message.reply_text("Falha ao fazer upload do arquivo.")
+    except Exception as e:
+        await update.message.reply_text(f"Erro durante o processamento: {str(e)}")
 # Função para mostrar o menu de instruções
 async def show_menu(update: Update, context: CallbackContext) -> None:
     menu_message = (

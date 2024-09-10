@@ -3,10 +3,8 @@ import requests
 import speedtest
 import time
 import libtorrent as lt
-from telegram import Update, Bot
-from telegram.ext import Application, CommandHandler, CallbackContext
-from telegram.ext import MessageHandler, filters
-from telegram import ReplyKeyboardMarkup
+from telegram import Update, Bot, ReplyKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackContext, MessageHandler, filters
 
 # Configurações
 GOFILE_API_KEY = "KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j"
@@ -102,7 +100,45 @@ async def start_download(update: Update, context: CallbackContext) -> None:
     else:
         await update.message.reply_text("Falha ao fazer upload do arquivo.")
 
-# [O resto do código permanece o mesmo]
+# Função para mostrar o menu de instruções
+async def show_menu(update: Update, context: CallbackContext) -> None:
+    menu_message = (
+        "Bem-vindo! Aqui estão os comandos disponíveis:\n\n"
+        "/start_download <caminho_arquivo_torrent> - Inicia o download a partir do arquivo torrent.\n"
+        "/speedtest - Executa um teste de velocidade de internet.\n"
+        "/upload_to_gofile <nome_arquivo> - Faz upload do arquivo para o GoFile.\n"
+        "/toggle_bot - Ativa ou desativa o bot.\n"
+    )
+    await update.message.reply_text(menu_message)
 
-# Iniciar o bot
-application.run_polling()
+# Criação de um menu flutuante com as opções
+def get_reply_keyboard():
+    custom_keyboard = [
+        ['/start_download', '/speedtest'],
+        ['/upload_to_gofile', '/toggle_bot'],
+        ['/help']
+    ]
+    return ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
+
+# Configurar o menu flutuante (usando um MessageHandler para capturar a digitação de '/')
+async def show_floating_menu(update: Update, context: CallbackContext) -> None:
+    reply_markup = get_reply_keyboard()
+    await update.message.reply_text("Escolha uma opção:", reply_markup=reply_markup)
+
+def main() -> None:
+    # Inicializar o bot com a nova forma de construção
+    application = Application.builder().token(bot_token).build()
+
+    # Configurar comandos do bot
+    application.add_handler(CommandHandler('start_download', start_download))
+    application.add_handler(CommandHandler('speedtest', run_speedtest))
+    application.add_handler(CommandHandler('help', show_menu))
+
+    # Adicionando o handler do menu flutuante
+    application.add_handler(MessageHandler(filters.Regex('^/$'), show_floating_menu))
+
+    # Iniciar o bot
+    application.run_polling()
+
+if __name__ == '__main__':
+    main()

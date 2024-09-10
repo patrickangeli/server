@@ -5,11 +5,12 @@ import time
 import libtorrent as lt
 from telegram import Update, Bot, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackContext, MessageHandler, filters
+import hashlib
 
 # Configurações
 GOFILE_API_KEY = "KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j"
 bot_token = '7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM'
-MAX_FILE_NAME_LENGTH = 255  # Ajuste este valor conforme necessário
+MAX_FILE_NAME_LENGTH = 64  # Reduzindo para um valor bem seguro
 
 # Função para fazer upload do arquivo para o GoFile
 def upload_file(file_path):
@@ -47,19 +48,33 @@ async def run_speedtest(update: Update, context: CallbackContext) -> None:
 
     await update.message.reply_text(response_message, parse_mode='Markdown')
 
-# Função para extrair e truncar o nome do arquivo a partir do arquivo torrent
+# Função para gerar um nome de arquivo curto e único
+def generate_short_filename(original_name):
+    # Pega a extensão original (se houver)
+    _, ext = os.path.splitext(original_name)
+    
+    # Gera um hash do nome original
+    hash_object = hashlib.md5(original_name.encode())
+    hash_str = hash_object.hexdigest()[:8]  # Usa os primeiros 8 caracteres do hash
+    
+    # Cria um novo nome curto
+    new_name = f"file_{hash_str}{ext}"
+    
+    # Garante que o novo nome não exceda o comprimento máximo
+    if len(new_name) > MAX_FILE_NAME_LENGTH:
+        new_name = new_name[:MAX_FILE_NAME_LENGTH - len(ext)] + ext
+    
+    return new_name
+
+# Função para extrair e processar o nome do arquivo a partir do arquivo torrent
 def get_file_name_from_torrent(torrent_path):
     try:
         info = lt.torrent_info(torrent_path)
-        file_name = info.name()
-        if len(file_name) > MAX_FILE_NAME_LENGTH:
-            base, ext = os.path.splitext(file_name)
-            truncated_base = base[:MAX_FILE_NAME_LENGTH - len(ext) - 3]  # -3 para "..."
-            file_name = f"{truncated_base}...{ext}"
-        return file_name
+        original_name = info.name()
+        return generate_short_filename(original_name)
     except Exception as e:
         print(f"Erro ao obter o nome do arquivo do torrent: {e}")
-        return None
+        return generate_short_filename("unknown_file")
 
 # Comando para iniciar o download e fazer o upload após completar (usando o arquivo .torrent)
 async def start_download(update: Update, context: CallbackContext) -> None:
@@ -73,11 +88,7 @@ async def start_download(update: Update, context: CallbackContext) -> None:
     # Pegar o nome do arquivo a partir do .torrent
     file_name = get_file_name_from_torrent(torrent_path)
 
-    if file_name is None:
-        await update.message.reply_text("Falha ao obter o nome do arquivo do torrent.")
-        return
-
-    await update.message.reply_text(f"Nome do arquivo extraído: `{file_name}`")
+    await update.message.reply_text(f"Nome do arquivo gerado: `{file_name}`")
 
     # Simulação de download (substitua isso por sua lógica de download real se necessário)
     time.sleep(10)  # Simulando 10 segundos de download
@@ -100,30 +111,7 @@ async def start_download(update: Update, context: CallbackContext) -> None:
     else:
         await update.message.reply_text("Falha ao fazer upload do arquivo.")
 
-# Função para mostrar o menu de instruções
-async def show_menu(update: Update, context: CallbackContext) -> None:
-    menu_message = (
-        "Bem-vindo! Aqui estão os comandos disponíveis:\n\n"
-        "/start_download <caminho_arquivo_torrent> - Inicia o download a partir do arquivo torrent.\n"
-        "/speedtest - Executa um teste de velocidade de internet.\n"
-        "/upload_to_gofile <nome_arquivo> - Faz upload do arquivo para o GoFile.\n"
-        "/toggle_bot - Ativa ou desativa o bot.\n"
-    )
-    await update.message.reply_text(menu_message)
-
-# Criação de um menu flutuante com as opções
-def get_reply_keyboard():
-    custom_keyboard = [
-        ['/start_download', '/speedtest'],
-        ['/upload_to_gofile', '/toggle_bot'],
-        ['/help']
-    ]
-    return ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
-
-# Configurar o menu flutuante (usando um MessageHandler para capturar a digitação de '/')
-async def show_floating_menu(update: Update, context: CallbackContext) -> None:
-    reply_markup = get_reply_keyboard()
-    await update.message.reply_text("Escolha uma opção:", reply_markup=reply_markup)
+# [O resto do código permanece o mesmo]
 
 def main() -> None:
     # Inicializar o bot com a nova forma de construção

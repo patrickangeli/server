@@ -2,6 +2,7 @@ import os
 import requests
 import speedtest
 import time
+import libtorrent as lt
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, CallbackContext
 from telegram.ext import MessageHandler, filters
@@ -29,7 +30,7 @@ def upload_file(file_path):
         print(f"Erro ao enviar o arquivo: {e}")
         return None
 
-# Comando para realizar o Speedtest
+# Função para realizar o Speedtest
 async def run_speedtest(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text("Executando Speedtest, por favor, aguarde...")
 
@@ -47,31 +48,43 @@ async def run_speedtest(update: Update, context: CallbackContext) -> None:
 
     await update.message.reply_text(response_message, parse_mode='Markdown')
 
-# Função para mostrar o menu de instruções
-async def show_menu(update: Update, context: CallbackContext) -> None:
-    menu_message = (
-        "Bem-vindo! Aqui estão os comandos disponíveis:\n\n"
-        "/start_download <torrent_name> - Inicia o download a partir do nome do torrent.\n"
-        "/speedtest - Executa um teste de velocidade de internet.\n"
-        "/upload_to_gofile <nome_arquivo> - Faz upload do arquivo para o GoFile.\n"
-        "/toggle_bot - Ativa ou desativa o bot.\n"
-    )
-    await update.message.reply_text(menu_message)
+# Função para extrair o nome do arquivo a partir do arquivo torrent
+def get_file_name_from_torrent(torrent_path):
+    try:
+        # Criar um objeto de informação do torrent a partir do arquivo torrent
+        info = lt.torrent_info(torrent_path)
+        # Pegar o nome do primeiro arquivo no torrent (ou o nome do diretório, se for uma pasta)
+        if info.num_files() > 1:
+            return info.name()  # Retorna o nome da pasta principal se houver vários arquivos
+        else:
+            return info.files().file_name(0)  # Retorna o nome do único arquivo no torrent
+    except Exception as e:
+        print(f"Erro ao obter o nome do arquivo do torrent: {e}")
+        return None
 
-# Comando para iniciar o download e fazer o upload após completar (simulação com nome do torrent)
+# Comando para iniciar o download e fazer o upload após completar (usando o arquivo .torrent)
 async def start_download(update: Update, context: CallbackContext) -> None:
     if len(context.args) == 0:
-        await update.message.reply_text("Por favor, forneça o nome do torrent para iniciar o download.")
+        await update.message.reply_text("Por favor, forneça o caminho do arquivo torrent para iniciar o download.")
         return
     
-    torrent_name = context.args[0]
-    await update.message.reply_text(f'Download do torrent `{torrent_name}` iniciado! Monitorando progresso (simulado)...')
+    torrent_path = context.args[0]  # Caminho do arquivo .torrent
+    await update.message.reply_text(f'Download a partir do torrent `{torrent_path}` iniciado! Monitorando progresso...')
+
+    # Pegar o nome do arquivo a partir do .torrent
+    file_name = get_file_name_from_torrent(torrent_path)
+
+    if file_name is None:
+        await update.message.reply_text("Falha ao obter o nome do arquivo do torrent.")
+        return
+
+    await update.message.reply_text(f"Nome do arquivo extraído: `{file_name}`")
 
     # Simulação de download (substitua isso por sua lógica de download real se necessário)
     time.sleep(10)  # Simulando 10 segundos de download
 
-    # Simulação de caminho de arquivo
-    file_path = f"/home/{torrent_name}"  # Simulando caminho do arquivo
+    # Simulação de caminho de arquivo baixado
+    file_path = f"/home/{file_name}"
 
     # Upload para GoFile após o download simulado
     gofile_link = upload_file(file_path)
@@ -87,6 +100,17 @@ async def start_download(update: Update, context: CallbackContext) -> None:
             await update.message.reply_text(f"Erro ao deletar o arquivo: {e}")
     else:
         await update.message.reply_text("Falha ao fazer upload do arquivo.")
+
+# Função para mostrar o menu de instruções
+async def show_menu(update: Update, context: CallbackContext) -> None:
+    menu_message = (
+        "Bem-vindo! Aqui estão os comandos disponíveis:\n\n"
+        "/start_download <caminho_arquivo_torrent> - Inicia o download a partir do arquivo torrent.\n"
+        "/speedtest - Executa um teste de velocidade de internet.\n"
+        "/upload_to_gofile <nome_arquivo> - Faz upload do arquivo para o GoFile.\n"
+        "/toggle_bot - Ativa ou desativa o bot.\n"
+    )
+    await update.message.reply_text(menu_message)
 
 # Criação de um menu flutuante com as opções
 def get_reply_keyboard():

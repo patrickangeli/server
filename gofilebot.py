@@ -5,10 +5,10 @@ from telegram.ext import Updater, CommandHandler, CallbackContext
 from qbittorrent import Client
 
 # Configurações
-QB_URL = os.getenv('http://127.0.0.1:8080')
-QB_USERNAME = os.getenv('ptkangel')
-QB_PASSWORD = os.getenv('trickangel1723')
-GOFILE_API_KEY = os.getenv('KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j')
+QB_URL = "http://127.0.0.1:8080"
+QB_USERNAME = "ptkangel"
+QB_PASSWORD = "trickangel1723"
+GOFILE_API_KEY = "KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j"
 
 if not QB_URL or not QB_USERNAME or not QB_PASSWORD:
     raise ValueError("As variáveis de ambiente para o qBittorrent não estão definidas corretamente.")

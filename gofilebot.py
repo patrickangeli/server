@@ -49,7 +49,7 @@ async def run_speedtest(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(response_message, parse_mode='Markdown')
 
 # Função para extrair o nome do arquivo a partir do arquivo torrent, com limite de tamanho de nome
-def get_file_name_from_torrent(torrent_path, max_length=100):
+def get_file_name_from_torrent(torrent_path, max_length=10):
     try:
         # Criar um objeto de informação do torrent a partir do arquivo torrent
         info = lt.torrent_info(torrent_path)

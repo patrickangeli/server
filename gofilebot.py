@@ -66,13 +66,14 @@ def generate_short_filename(original_name):
     return new_name
 
 def get_file_name_from_torrent(torrent_path):
-    try:
-        info = lt.torrent_info(torrent_path)
-        original_name = info.name()
-        return sanitize_filename(original_name)
-    except Exception as e:
-        print(f"Erro ao obter o nome do arquivo do torrent: {e}")
-        return "unknown_file"
+  try:
+    info = lt.torrent_info(torrent_path)
+    # Get the first filename from the list (adjust if needed)
+    original_name = info.files().name()[0]
+    return sanitize_filename(original_name)
+  except Exception as e:
+    print(f"Erro ao obter o nome do arquivo do torrent: {e}")
+    return "unknown_file"
 
 async def start_download(update: Update, context: CallbackContext) -> None:
     if len(context.args) == 0:

@@ -71,7 +71,7 @@ async def start_download(update: Update, context: CallbackContext) -> None:
     time.sleep(10)  # Simulando 10 segundos de download
 
     # Simulação de caminho de arquivo
-    file_path = f"/caminho/para/{magnet_link.split(':')[-1]}.file"  # Simulando caminho do arquivo
+    file_path = f"/home/{magnet_link.split(':')[-1]}.file"  # Simulando caminho do arquivo
 
     # Upload para GoFile após o download simulado
     gofile_link = upload_file(file_path)

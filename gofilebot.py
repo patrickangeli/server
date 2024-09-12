@@ -14,21 +14,18 @@ GOFILE_API_KEY = "KIxsOddlMz2Iy9Bbng0e3Yke2QsUEr3j"
 bot_token = '7259838966:AAE69fL3BJKVXclATA8n6wYCKI0OmqStKrM'
 
 # Função para fazer upload do arquivo para o GoFile
-def upload_file(file_path):
+def upload_file_rclone(file_path):
     try:
-        with open(file_path, 'rb') as file:
-            response = requests.post(
-                'https://api.gofile.io/uploadFile',
-                files={'file': file},
-                headers={'Authorization': GOFILE_API_KEY}
-            )
-            response_data = response.json()
-            if response_data['status'] == 'ok':
-                return response_data['data']['downloadPage']
-            else:
-                raise Exception(f"Erro no upload: {response_data['status']}")
+        rclone_upload_command = f'rclone copy "{file_path}" gofile:./Torrent/'
+        os.system(rclone_upload_command)
+
+        # Verificar se o arquivo ainda existe localmente (indicando que o upload foi bem-sucedido)
+        if os.path.exists(file_path):
+            return f"Upload para GoFile com rclone concluído: {file_path}"
+        else:
+            return "Erro no upload com rclone para GoFile."
     except Exception as e:
-        print(f"Erro ao enviar o arquivo: {e}")
+        print(f"Erro ao enviar o arquivo com rclone: {e}")
         return None
 
 # Comando para realizar o Speedtest
@@ -124,10 +121,10 @@ async def start_download(update: Update, context: CallbackContext) -> None:
     # Caminho do arquivo baixado
     file_path = os.path.join(params['save_path'], handle.name())
 
-    # Upload para GoFile
-    gofile_link = upload_file(file_path)
-    if gofile_link:
-        await update.message.reply_text(f"Arquivo enviado para GoFile: {gofile_link}")
+    # Upload para GoFile usando rclone
+    rclone_response = upload_file_rclone(file_path)
+    if rclone_response:
+        await update.message.reply_text(rclone_response)
         
         # Deletar arquivo após upload
         try:
@@ -136,7 +133,7 @@ async def start_download(update: Update, context: CallbackContext) -> None:
         except Exception as e:
             await update.message.reply_text(f"Erro ao deletar o arquivo: {e}")
     else:
-        await update.message.reply_text("Erro ao fazer upload do arquivo.")
+        await update.message.reply_text("Erro ao fazer upload do arquivo com rclone.")
 
 # Criação de um menu flutuante com as opções
 def get_reply_keyboard():

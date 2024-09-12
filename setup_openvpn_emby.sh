@@ -52,7 +52,7 @@ push "dhcp-option DNS 8.8.8.8"
 push "dhcp-option DNS 8.8.4.4"
 
 # Configuração de IPv6
-server-ipv6 2001:db8:1::/64  # Substitua pelo bloco IPv6
+server-ipv6 2a01:4f9:6b:f887::1/64  # Substitua pelo bloco IPv6
 push "route-ipv6 2000::/3"
 push "redirect-gateway ipv6"
 tun-ipv6

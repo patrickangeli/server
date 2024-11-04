@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrossel 1</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@7/swiper-bundle.min.css"/>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; }
+        .swiper { width: 100%; height: 100%; }
+        .swiper-slide img { width: 100%; height: 100%; object-fit: cover; }
+    </style>
+</head>
+<body>
+    <div class="swiper">
+        <div class="swiper-wrapper">
+            <div class="swiper-slide"><img src="URL_DA_IMAGEM_1_1" alt="Imagem 1.1"></div>
+            <div class="swiper-slide"><img src="URL_DA_IMAGEM_1_2" alt="Imagem 1.2"></div>
+            <div class="swiper-slide"><img src="URL_DA_IMAGEM_1_3" alt="Imagem 1.3"></div>
+        </div>
+        <div class="swiper-pagination"></div>
+        <div class="swiper-button-prev"></div>
+        <div class="swiper-button-next"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@7/swiper-bundle.min.js"></script>
+    <script>
+        new Swiper('.swiper', {
+            loop: true,
+            pagination: { el: '.swiper-pagination' },
+            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+        });
+    </script>
+</body>
+</html>

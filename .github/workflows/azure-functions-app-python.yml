@@ -2,8 +2,8 @@ name: Monitor Websites
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Executa a cada 30 minutos
-  workflow_dispatch:  # Permite execução manual
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
 
 jobs:
   check-websites:
@@ -11,33 +11,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.0'
-
-      - name: Create Jekyll structure
-        run: |
-          mkdir -p docs
-          cd docs
-          mkdir -p _sass assets/css
-          echo 'source: .' > _config.yml
-          echo 'sass:' >> _config.yml
-          echo '  style: compressed' >> _config.yml
-          echo '  sass_dir: _sass' >> _config.yml
-          echo '@import "main";' > assets/css/style.scss
-          echo '// Base styles' > _sass/main.scss
-
-      - name: Install Jekyll and dependencies
-        run: |
-          cd docs
-          echo 'source "https://rubygems.org"' > Gemfile
-          echo 'gem "github-pages"' >> Gemfile
-          echo 'gem "jekyll"' >> Gemfile
-          echo 'gem "minima"' >> Gemfile
-          echo 'gem "faraday-retry"' >> Gemfile
-          bundle install
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -48,6 +21,30 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Create Jekyll site structure
+        run: |
+          mkdir -p docs
+          cd docs
+          # Criar estrutura básica do Jekyll
+          mkdir -p _layouts _includes _sass assets/css
+          
+          # Criar _config.yml
+          echo "title: Website Monitor" > _config.yml
+          echo "theme: jekyll-theme-minimal" >> _config.yml
+          
+          # Criar index.md
+          echo "# Website Monitor" > index.md
+          echo "## Latest Updates" >> index.md
+          
+          # Criar style.scss
+          echo "---" > assets/css/style.scss
+          echo "---" >> assets/css/style.scss
+          echo "" >> assets/css/style.scss
+          echo "@import \"{{ site.theme }}\";" >> assets/css/style.scss
 
       - name: Check websites for changes
         env:
@@ -62,16 +59,13 @@ jobs:
           import json
           from datetime import datetime
 
-          # Cria a pasta 'docs' se não existir
-          pasta_docs = 'docs'
-          if not os.path.exists(pasta_docs):
-              os.makedirs(pasta_docs)
-              print(f'A pasta "{pasta_docs}" foi criada.')
-          else:
-              print(f'A pasta "{pasta_docs}" já existe.')
+          # Configuração dos diretórios
+          docs_dir = 'docs'
+          if not os.path.exists(docs_dir):
+              os.makedirs(docs_dir)
 
-          # Configura o arquivo de log
-          log_file = 'docs/change_log.json'
+          # Arquivo de log
+          log_file = os.path.join(docs_dir, 'changes.json')
           if not os.path.exists(log_file):
               with open(log_file, 'w') as f:
                   json.dump([], f)
@@ -94,23 +88,23 @@ jobs:
           def check_website(url):
               try:
                   headers = {
-                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                   }
                   response = requests.get(url, headers=headers, timeout=30)
                   response.raise_for_status()
                   soup = BeautifulSoup(response.text, 'html.parser')
-                  content = soup.get_text()
-                  return hashlib.md5(content.encode()).hexdigest()
+                  return hashlib.md5(soup.get_text().encode()).hexdigest()
               except Exception as e:
                   print(f"Erro ao verificar {url}: {str(e)}")
                   return None
 
-          # Carregar URLs dos sites
+          # Carregar URLs
           websites = json.loads(os.environ['WEBSITE_URLS'])
 
           # Carregar hashes anteriores
+          hash_file = os.path.join(docs_dir, 'last_hashes.json')
           try:
-              with open('docs/last_hashes.json', 'r') as f:
+              with open(hash_file, 'r') as f:
                   last_hashes = json.load(f)
           except FileNotFoundError:
               last_hashes = {}
@@ -124,13 +118,13 @@ jobs:
               if current_hash:
                   current_hashes[url] = current_hash
                   if url not in last_hashes or current_hash != last_hashes[url]:
-                      update_message = f"🔄 <b>Atualização Detectada!</b>\n\n📱 Site: {url}\n⏰ Data: {timestamp}"
-                      updates.append(update_message)
+                      message = f"🔄 <b>Atualização Detectada!</b>\n\n📱 Site: {url}\n⏰ Data: {timestamp}"
+                      updates.append(message)
 
           if updates:
               send_telegram_message("\n\n".join(updates))
-
-              # Salvar as mudanças no log
+              
+              # Atualizar o arquivo de log
               with open(log_file, 'r+') as f:
                   logs = json.load(f)
                   for update in updates:
@@ -139,24 +133,34 @@ jobs:
                           'update': update
                       })
                   f.seek(0)
+                  f.truncate()
                   json.dump(logs, f, indent=2)
 
-          # Salvar os novos hashes
-          with open('docs/last_hashes.json', 'w') as f:
+              # Atualizar index.md com as últimas alterações
+              with open(os.path.join(docs_dir, 'index.md'), 'w') as f:
+                  f.write("# Website Monitor\n\n## Latest Updates\n\n")
+                  for log in reversed(logs[-10:]):  # Últimas 10 alterações
+                      f.write(f"- {log['timestamp']}: {log['update']}\n")
+
+          # Salvar hashes atuais
+          with open(hash_file, 'w') as f:
               json.dump(current_hashes, f, indent=2)
 
           if not updates:
               print(f"[{timestamp}] Nenhuma mudança detectada.")
         shell: python
 
-      - name: Build Jekyll site
-        run: |
-          cd docs
-          bundle exec jekyll build
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./docs
+          destination: ./_site
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
 
       - name: Deploy to GitHub Pages
-        if: success()
-        uses: peaceiris/actions-gh-pages@v3
+        id: deployment
+        uses: actions/deploy-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/_site
+          token: ${{ secrets.GITHUB_TOKEN }}

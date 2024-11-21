@@ -2,7 +2,7 @@ name: Monitor Websites
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Executa a cada 30 minutos
+    - cron: '*/1 * * * *'  # Executa a cada 30 minutos
   workflow_dispatch:  # Permite execução manual
 
 jobs:
@@ -34,8 +34,20 @@ jobs:
 
       - name: Create necessary directories and files
         run: |
+          mkdir -p docs/_sass
           mkdir -p docs/assets/css
-          touch docs/assets/css/style.scss
+          echo '@import "main";' > docs/assets/css/style.scss
+          echo '// Add your styles here' > docs/_sass/main.scss
+
+      - name: Create Jekyll config
+        run: |
+          echo 'source: .' > docs/_config.yml
+          echo 'destination: _site' >> docs/_config.yml
+          echo 'sass:' >> docs/_config.yml
+          echo '  sass_dir: _sass' >> docs/_config.yml
+          echo '  style: compressed' >> docs/_config.yml
+          echo 'theme: minima' >> docs/_config.yml
+          echo 'gem "minima"' > docs/Gemfile
 
       - name: Check websites for changes
         env:
@@ -119,8 +131,8 @@ jobs:
               print("Nenhuma mudança detectada em nenhum site.")
         shell: python
 
-        
       - name: Build Jekyll site
         run: |
           cd docs
+          bundle install
           bundle exec jekyll build

@@ -1,0 +1,65 @@
+name: Monitor Website
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Executa a cada 30 minutos
+  workflow_dispatch:  # Permite execução manual
+
+jobs:
+  check-website:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: Check website for changes
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          WEBSITE_URL: 'https://posdireito.ufv.br/selecao/'  # Substitua pela URL que deseja monitorar
+        run: |
+          import requests
+          from bs4 import BeautifulSoup
+          import os
+          import hashlib
+
+          def send_telegram_message(message):
+              token = os.environ['TELEGRAM_TOKEN']
+              chat_id = os.environ['TELEGRAM_CHAT_ID']
+              url = f"https://api.telegram.org/bot{token}/sendMessage"
+              payload = {
+                  "chat_id": chat_id,
+                  "text": message
+              }
+              requests.post(url, json=payload)
+
+          url = os.environ['WEBSITE_URL']
+          response = requests.get(url)
+          soup = BeautifulSoup(response.text, 'html.parser')
+          content = soup.get_text()
+          
+          current_hash = hashlib.md5(content.encode()).hexdigest()
+
+          try:
+              with open('last_hash.txt', 'r') as f:
+                  last_hash = f.read().strip()
+          except FileNotFoundError:
+              last_hash = ''
+
+          if current_hash != last_hash:
+              send_telegram_message(f"A página {url} foi atualizada!")
+              with open('last_hash.txt', 'w') as f:
+                  f.write(current_hash)
+          else:
+              print("Nenhuma mudança detectada.")
+        shell: python

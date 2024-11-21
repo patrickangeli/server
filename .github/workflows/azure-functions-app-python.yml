@@ -2,7 +2,7 @@ name: Monitor Websites
 
 on:
   schedule:
-    - cron: '*/1 * * * *'  # Executa a cada 30 minutos
+    - cron: '*/30 * * * *'  # Executa a cada 30 minutos
   workflow_dispatch:  # Permite execução manual
 
 jobs:
@@ -28,12 +28,26 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           WEBSITE_URLS: ${{ secrets.WEBSITE_URLS }}
         run: |
-         import requests
+          import requests
           from bs4 import BeautifulSoup
           import os
           import hashlib
           import json
-          
+
+          # Cria a pasta 'docs' se não existir
+          pasta_docs = 'docs'
+          if not os.path.exists(pasta_docs):
+              os.makedirs(pasta_docs)
+              print(f'A pasta "{pasta_docs}" foi criada.')
+          else:
+              print(f'A pasta "{pasta_docs}" já existe.')
+
+          # Configura o arquivo de log
+          log_file = 'docs/change_log.json'
+          if not os.path.exists(log_file):
+              with open(log_file, 'w') as f:
+                  json.dump([], f)  # Cria um arquivo JSON vazio para log
+
           def send_telegram_message(message):
               token = os.environ['TELEGRAM_TOKEN']
               chat_id = os.environ['TELEGRAM_CHAT_ID']
@@ -43,41 +57,49 @@ jobs:
                   "text": message
               }
               requests.post(url, json=payload)
-          
+
           def check_website(url):
               response = requests.get(url)
               soup = BeautifulSoup(response.text, 'html.parser')
               content = soup.get_text()
               return hashlib.md5(content.encode()).hexdigest()
-          
+
           # Carregar URLs dos sites a serem monitorados
           websites = json.loads(os.environ['WEBSITE_URLS'])
-          
+
           # Carregar hashes anteriores
-          cache_file = 'website_cache.json'
-          if os.path.exists(cache_file):
-              with open(cache_file, 'r') as f:
+          try:
+              with open('docs/last_hashes.json', 'r') as f:
                   last_hashes = json.load(f)
-          else:
+          except FileNotFoundError:
               last_hashes = {}
-          
+
           current_hashes = {}
           updates = []
-          
+
           for url in websites:
               current_hash = check_website(url)
               current_hashes[url] = current_hash
-          
+
               if url not in last_hashes or current_hash != last_hashes[url]:
-                  updates.append(f"A página {url} foi atualizada!")
-          
+                  update_message = f"A página {url} foi atualizada!"
+                  updates.append(update_message)
+
           if updates:
               send_telegram_message("\n".join(updates))
-          
+
+              # Salvar as mudanças detectadas no log
+              with open(log_file, 'r+') as f:
+                  logs = json.load(f)
+                  for update in updates:
+                      logs.append({'update': update})
+                  f.seek(0)
+                  json.dump(logs, f)
+
           # Salvar os novos hashes
-          with open(cache_file, 'w') as f:
+          with open('docs/last_hashes.json', 'w') as f:
               json.dump(current_hashes, f)
-          
+
           if not updates:
               print("Nenhuma mudança detectada em nenhum site.")
         shell: python

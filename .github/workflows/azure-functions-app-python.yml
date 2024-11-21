@@ -2,7 +2,7 @@ name: Monitor Websites
 
 on:
   schedule:
-    - cron: '*/1 * * * *'  # Executa a cada 30 minutos
+    - cron: '*/30 * * * *'  # Executa a cada 30 minutos
   workflow_dispatch:  # Permite execução manual
 
 jobs:
@@ -17,9 +17,26 @@ jobs:
         with:
           ruby-version: '3.0'
 
+      - name: Create Jekyll structure
+        run: |
+          mkdir -p docs
+          cd docs
+          mkdir -p _sass assets/css
+          echo 'source: .' > _config.yml
+          echo 'sass:' >> _config.yml
+          echo '  style: compressed' >> _config.yml
+          echo '  sass_dir: _sass' >> _config.yml
+          echo '@import "main";' > assets/css/style.scss
+          echo '// Base styles' > _sass/main.scss
+
       - name: Install Jekyll and dependencies
         run: |
-          gem install bundler
+          cd docs
+          echo 'source "https://rubygems.org"' > Gemfile
+          echo 'gem "github-pages"' >> Gemfile
+          echo 'gem "jekyll"' >> Gemfile
+          echo 'gem "minima"' >> Gemfile
+          echo 'gem "faraday-retry"' >> Gemfile
           bundle install
 
       - name: Set up Python
@@ -32,23 +49,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4
 
-      - name: Create necessary directories and files
-        run: |
-          mkdir -p docs/_sass
-          mkdir -p docs/assets/css
-          echo '@import "main";' > docs/assets/css/style.scss
-          echo '// Add your styles here' > docs/_sass/main.scss
-
-      - name: Create Jekyll config
-        run: |
-          echo 'source: .' > docs/_config.yml
-          echo 'destination: _site' >> docs/_config.yml
-          echo 'sass:' >> docs/_config.yml
-          echo '  sass_dir: _sass' >> docs/_config.yml
-          echo '  style: compressed' >> docs/_config.yml
-          echo 'theme: minima' >> docs/_config.yml
-          echo 'gem "minima"' > docs/Gemfile
-
       - name: Check websites for changes
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -60,6 +60,7 @@ jobs:
           import os
           import hashlib
           import json
+          from datetime import datetime
 
           # Cria a pasta 'docs' se não existir
           pasta_docs = 'docs'
@@ -73,7 +74,7 @@ jobs:
           log_file = 'docs/change_log.json'
           if not os.path.exists(log_file):
               with open(log_file, 'w') as f:
-                  json.dump([], f)  # Cria um arquivo JSON vazio para log
+                  json.dump([], f)
 
           def send_telegram_message(message):
               token = os.environ['TELEGRAM_TOKEN']
@@ -81,17 +82,30 @@ jobs:
               url = f"https://api.telegram.org/bot{token}/sendMessage"
               payload = {
                   "chat_id": chat_id,
-                  "text": message
+                  "text": message,
+                  "parse_mode": "HTML"
               }
-              requests.post(url, json=payload)
+              try:
+                  response = requests.post(url, json=payload)
+                  response.raise_for_status()
+              except Exception as e:
+                  print(f"Erro ao enviar mensagem: {str(e)}")
 
           def check_website(url):
-              response = requests.get(url)
-              soup = BeautifulSoup(response.text, 'html.parser')
-              content = soup.get_text()
-              return hashlib.md5(content.encode()).hexdigest()
+              try:
+                  headers = {
+                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                  }
+                  response = requests.get(url, headers=headers, timeout=30)
+                  response.raise_for_status()
+                  soup = BeautifulSoup(response.text, 'html.parser')
+                  content = soup.get_text()
+                  return hashlib.md5(content.encode()).hexdigest()
+              except Exception as e:
+                  print(f"Erro ao verificar {url}: {str(e)}")
+                  return None
 
-          # Carregar URLs dos sites a serem monitorados
+          # Carregar URLs dos sites
           websites = json.loads(os.environ['WEBSITE_URLS'])
 
           # Carregar hashes anteriores
@@ -103,36 +117,46 @@ jobs:
 
           current_hashes = {}
           updates = []
+          timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
           for url in websites:
               current_hash = check_website(url)
-              current_hashes[url] = current_hash
-
-              if url not in last_hashes or current_hash != last_hashes[url]:
-                  update_message = f"A página {url} foi atualizada!"
-                  updates.append(update_message)
+              if current_hash:
+                  current_hashes[url] = current_hash
+                  if url not in last_hashes or current_hash != last_hashes[url]:
+                      update_message = f"🔄 <b>Atualização Detectada!</b>\n\n📱 Site: {url}\n⏰ Data: {timestamp}"
+                      updates.append(update_message)
 
           if updates:
-              send_telegram_message("\n".join(updates))
+              send_telegram_message("\n\n".join(updates))
 
-              # Salvar as mudanças detectadas no log
+              # Salvar as mudanças no log
               with open(log_file, 'r+') as f:
                   logs = json.load(f)
                   for update in updates:
-                      logs.append({'update': update})
+                      logs.append({
+                          'timestamp': timestamp,
+                          'update': update
+                      })
                   f.seek(0)
-                  json.dump(logs, f)
+                  json.dump(logs, f, indent=2)
 
           # Salvar os novos hashes
           with open('docs/last_hashes.json', 'w') as f:
-              json.dump(current_hashes, f)
+              json.dump(current_hashes, f, indent=2)
 
           if not updates:
-              print("Nenhuma mudança detectada em nenhum site.")
+              print(f"[{timestamp}] Nenhuma mudança detectada.")
         shell: python
 
       - name: Build Jekyll site
         run: |
           cd docs
-          bundle install
           bundle exec jekyll build
+
+      - name: Deploy to GitHub Pages
+        if: success()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/_site

@@ -2,7 +2,7 @@ name: Monitor Websites
 
 on:
   schedule:
-    - cron: '*/2 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -11,8 +11,12 @@ permissions:
   id-token: write
 
 jobs:
-  check-websites:
+  check-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -34,18 +38,14 @@ jobs:
         run: |
           mkdir -p docs
           cd docs
-          # Criar estrutura básica do Jekyll
           mkdir -p _layouts _includes _sass assets/css
           
-          # Criar _config.yml
           echo "title: Website Monitor" > _config.yml
           echo "theme: jekyll-theme-minimal" >> _config.yml
           
-          # Criar index.md
           echo "# Website Monitor" > index.md
           echo "## Latest Updates" >> index.md
           
-          # Criar style.scss
           echo "---" > assets/css/style.scss
           echo "---" >> assets/css/style.scss
           echo "" >> assets/css/style.scss
@@ -167,5 +167,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}

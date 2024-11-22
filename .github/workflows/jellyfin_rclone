@@ -1,0 +1,56 @@
+name: Jellyfin with Rclone
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-jellyfin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Cloudflared
+        run: |
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+
+      - name: Setup Rclone
+        uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+      - name: Create directories
+        run: |
+          sudo mkdir -p /mnt/media
+          sudo mkdir -p /mnt/config
+          sudo mkdir -p /mnt/cache
+
+      - name: Setup Jellyfin
+        run: |
+          docker run -d \
+            --name jellyfin \
+            -v /mnt/media:/media \
+            -v /mnt/config:/config \
+            -v /mnt/cache:/cache \
+            -p 8096:8096 \
+            -p 8920:8920 \
+            --device /dev/dri:/dev/dri \
+            --restart unless-stopped \
+            jellyfin/jellyfin:latest
+
+      - name: Mount Gofile
+        run: |
+          sudo rclone mount gofile: /mnt/media \
+            --daemon \
+            --vfs-cache-mode full \
+            --vfs-cache-max-size 10G \
+            --allow-other \
+            --buffer-size 256M \
+            --dir-cache-time 72h \
+            --vfs-read-ahead 128M
+
+      - name: Create Cloudflare Tunnel
+        env:
+          CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
+        run: |
+          cloudflared tunnel run --token $CLOUDFLARE_TOKEN &
+          echo "Tunnel criado. Aguardando..."
+          sleep infinity

@@ -1,12 +1,12 @@
-name: Transfer Files
+name: OneDrive Transfer
 on:
   workflow_dispatch:
     inputs:
-      gofile_url:
-        description: 'URL do Gofile'
+      source_dir:
+        description: 'Diretório local'
         required: true
-      drive_folder:
-        description: 'Pasta do Drive'
+      onedrive_folder:
+        description: 'Pasta do OneDrive'
         required: true
 
 jobs:
@@ -15,20 +15,19 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - name: Instalar dependências
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl jq
-          
       - name: Instalar rclone
         run: |
           curl https://rclone.org/install.sh | sudo bash
           
       - name: Configurar rclone
         run: |
-          echo "${{ secrets.RCLONE_CONFIG }}" > rclone.conf
+          mkdir -p ~/.config/rclone
+          echo '[onedrive]
+          type = onedrive
+          token = {"access_token":"EwCIA8l6BAAUbDba3x2OMJElkF7gJ4z/VbCPEz0AAcOvLcfnkUDd9U9BngAK77H+Ryc9T1hJsVnixxuJ3mOtRbwzhATh9hFbYCljrrWdnZFag+ZMJ6lGAxV7ThNcYFUA8AfR+uSNQRWUlqBtBBt8E3qXEcKrLWaZUj7bFokfyQEEPL6Kf1xkKN1SmXeXFrY7ZBDZNjmc7lwGMfwQyUeUCWi/y1e67URYtkUV2GRYSmCZgAOBsE0qHYVgyDy5E6BnyGlgV81+mAGRNA8+LAbBqG4xKLc1RSWYOyeC3FEGHEEgI29ca6M3KuoQViNsaB9jgws78avq1SzBqhtZWTxQBaDnuYS0g+EJBfW4hads9/f3ZLO4i6EujyFDJ1wL5h8QZgAAEEyENssocoEet81tkw3ZBK9QAr2Bq18VMjrn86YN8VmVNWRz1sDS4rtwKiNMu41STFqCJaQUO5v9fswjQ0A3gr0LMuEq1VQzRCWJVYc1yX5aqWopPpr3OC1nk2zVq2C8OlPxG4w2tHS9yGplaoSKEuZRqqb6x2NdBsqJH+mKig02sJpZrEVF8Xt40RJGgtIN5NVe8OVpI0Xei9dSqLBmcbylt8NcmePo0G+RrpcbbJckfR/tPeWnbQml6gcJjkm3wfe0hkfDRV9fyKp5SDEQKLvpI8iG/NLZDlhhtWHxbvCgro8WyMdtZ7ULtrqymbpSZCDKMszmJCzXBDzymgxulANUkGDa937Gh+gaezCgQre2AhsyyChhp+6mZ/K2Y1+pztsQfvxx1CEiD2OclZwa5xDx3rfaMuyD8VCkDmWmRiOiKuQ61sWpGDS32E+9JGJtVF5V6PEpV4B7gBSV6x4aEVjAlJBkSioa8ZfiJO+HVC2nzb248YsLuKXQAf+9hudX7EyRp1BM3UW2seRw0Gcog3Tp1Cakw7Q3OfcArZ9PSWySPYkdcLIaNelNsw9v2h9sVPF0PyfRJ6lbUe3RxTh+Lr2q067HUZIwKVL2E36v6HvQWncSzeL+6x6CHidfUVtA8FUJmEXPshMO3rMZhSGNQufe1EGPWo9Nbk4a34uHw/I5DGFdIK36Uqoq2+WYpogCTIr4dWIjUo79sWeam8VodC9VFlNEbMsI/C3OiV8dL/btBWw8YSuZI1SORPMfzLmkg95Ufvgdc61xrnO2Pl5cmSItIOFE/bUjWwOmNy+3EC3pcC6EAg==","token_type":"Bearer","refresh_token":"M.C524_BAY.0.U.-Cg4sDNeLavDK*tl4b2905VLlZXDlTwAKMGBOtySgY1WHOmKv7ZSj9ZpOPo09Z4ehwy3aNivjT5xEt9l0cxvFyJ6uG!IijfibxmYl*u1XkezqECI*ZaT9oPEOcGasTq*A1CNfxSQfBNDzu0Z9qw4GZXPhPhYtm!NMEtN5QTIMnY1rjkzCJMXjj1ouxH2pDfMH*CVULlCgwF1cSScr4hIgSTSFqr3QKGCJVlhvN9dujkzuKX8d*nsTClczRZcrWoBeR5nKEEQDM*9uomfLDos90ylQnqR!H!lBwlJN7hwAPyQ7Z1ciIGKNXx2ig9gzZP7gPWedQCa3aqr*wIPehzyursuYOAmJGbwK6H3qgUvoCAH5JkT!DuzS7DvSl2Zyy!*PVQ$$","expiry":"2024-11-29T19:41:03.4283577-03:00"}
+          drive_type = personal' > ~/.config/rclone/rclone.conf
           
       - name: Executar transferência
         run: |
           chmod +x ./transfer.sh
-          ./transfer.sh "${{ github.event.inputs.gofile_url }}" "${{ github.event.inputs.drive_folder }}"
+          ./transfer.sh "${{ github.event.inputs.source_dir }}" "${{ github.event.inputs.onedrive_folder }}"

@@ -1,0 +1,34 @@
+name: Transfer Files
+on:
+  workflow_dispatch:
+    inputs:
+      gofile_url:
+        description: 'URL do Gofile'
+        required: true
+      drive_folder:
+        description: 'Pasta do Drive'
+        required: true
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Instalar dependências
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq
+          
+      - name: Instalar rclone
+        run: |
+          curl https://rclone.org/install.sh | sudo bash
+          
+      - name: Configurar rclone
+        run: |
+          echo "${{ secrets.RCLONE_CONFIG }}" > rclone.conf
+          
+      - name: Executar transferência
+        run: |
+          chmod +x ./transfer.sh
+          ./transfer.sh "${{ github.event.inputs.gofile_url }}" "${{ github.event.inputs.drive_folder }}"

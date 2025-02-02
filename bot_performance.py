@@ -36,11 +36,21 @@ async def monitoramento():
                 text=f"⚠️ ALERTA DE CPU: {uso_cpu}%"
             )
         await asyncio.sleep(60)
+async def check_cpu(context: ContextTypes.DEFAULT_TYPE):
+    try:
+        uso_cpu = psutil.cpu_percent()
+        if uso_cpu > LIMITE_CPU:
+            await context.bot.send_message(
+                chat_id=CHAT_ID,
+                text=f"⚠️ ALERTA: CPU a {uso_cpu}%"
+            )
+    except Exception as e:
+        print(f"Erro ao enviar alerta: {e}")
 
+# Configuração final
+if __name__ == "__main__":
+    application.add_handler(CommandHandler("getid", get_id))  # Novo comando para debug
+    application.job_queue.run_repeating(check_cpu, interval=60, first=0)
+    application.run_polling()
 # Configuração dos handlers
 application.add_handler(CommandHandler("metrics", metrics))
-
-# Inicialização do bot
-if __name__ == "__main__":
-    application.job_queue.run_once(lambda _: asyncio.create_task(monitoramento()), when=0)
-    application.run_polling()

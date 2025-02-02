@@ -57,6 +57,30 @@ async def start_rclone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"🔥 Falha ao iniciar Rclone: {str(e)}")
 
+async def start_jellyfin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        command = "sudo docker start jellyfin"
+        
+        process = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            await update.message.reply_text("✅ Jellyfin iniciado com sucesso!")
+        else:
+            await update.message.reply_text(f"❌ Erro ao iniciar Jellyfin:\n{stderr.decode().strip()}")
+            
+    except Exception as e:
+        await update.message.reply_text(f"🔥 Falha ao iniciar Jellyfin: {str(e)}")
+
+# Adicione o handler
+
+
+
 async def restart_jellyfin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Executa o comando com sudo
@@ -83,6 +107,7 @@ application.add_handler(CommandHandler("restart", restart_jellyfin))
 application.add_handler(CommandHandler("getid", get_id))
 application.add_handler(CommandHandler("metrics", metrics))
 application.add_handler(CommandHandler("rclone", start_rclone))
+application.add_handler(CommandHandler("start", start_jellyfin))
 # Monitoramento contínuo (executado em segundo plano)
 async def monitoramento():
     while True:

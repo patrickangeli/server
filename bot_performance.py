@@ -186,13 +186,6 @@ async def restart_jellyfin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"🔥 Falha crítica: {str(e)}")
 
-# Adicione o handler ANTES de iniciar o bot
-application.add_handler(conv_handler)
-application.add_handler(CommandHandler("restart", restart_jellyfin))
-application.add_handler(CommandHandler("getid", get_id))
-application.add_handler(CommandHandler("metrics", metrics))
-application.add_handler(CommandHandler("rclone", start_rclone))
-application.add_handler(CommandHandler("start", start_jellyfin))
 # Monitoramento contínuo (executado em segundo plano)
 async def monitoramento():
     while True:
@@ -216,8 +209,17 @@ async def check_cpu(context: ContextTypes.DEFAULT_TYPE):
 
 # Configuração final
 if __name__ == "__main__":
-    application.add_handler(CommandHandler("getid", get_id))  # Novo comando para debug
+    if __name__ == "__main__":
+    # Remova handlers duplicados e organize-os aqui
+    application.add_handler(conv_handler)
+    application.add_handler(CommandHandler("restart", restart_jellyfin))
+    application.add_handler(CommandHandler("getid", get_id))
+    application.add_handler(CommandHandler("metrics", metrics))
+    application.add_handler(CommandHandler("rclone", start_rclone))
+    application.add_handler(CommandHandler("start", start_jellyfin))
+    
+    # Configurar job queue
     application.job_queue.run_repeating(check_cpu, interval=60, first=0)
+    
+    # Iniciar o bot
     application.run_polling()
-# Configuração dos handlers
-application.add_handler(CommandHandler("metrics", metrics))

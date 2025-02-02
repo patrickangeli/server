@@ -59,7 +59,7 @@ async def start_rclone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start_jellyfin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        command = "sudo docker start jellyfin"
+        command = "/usr/bin/docker start jellyfin"
         
         process = await asyncio.create_subprocess_shell(
             command,

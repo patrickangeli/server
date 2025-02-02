@@ -132,21 +132,22 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 
                                 await msg.edit_text(status)
                                 
-                               if progress >= 100 or state == 'completed':
-                                    # Move o arquivo para o rclone
-                                    move_cmd = f"mv '{os.path.join(cache_path, name)}' '{final_path}'"
-                                    move_process = await asyncio.create_subprocess_shell(
-                                        move_cmd,
-                                        stdout=asyncio.subprocess.PIPE,
-                                        stderr=asyncio.subprocess.PIPE
-                                    )
-                                    await move_process.communicate()
-                                    
-                                    await update.message.reply_text(
-                                        "✅ Download concluído!\n"
-                                        f"📦 Arquivo movido para: {final_path}"
-                                    )
-                                    return ConversationHandler.END
+                     if progress >= 100 or state == 'completed':
+                        # Move o arquivo para o rclone
+                        move_cmd = f"mv '{os.path.join(cache_path, name)}' '{final_path}'"
+                        move_process = await asyncio.create_subprocess_shell(
+                            move_cmd,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE
+                        )
+                        await move_process.communicate()
+                        
+                        await update.message.reply_text(
+                            "✅ Download concluído!\n"
+                            f"📦 Arquivo movido para: {final_path}"
+                        )
+                        return ConversationHandler.END
+
 
                     except json.JSONDecodeError:
                         continue

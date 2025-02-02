@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 from telegram.ext import Updater, CommandHandler, CallbackContext, Application
 from threading import Thread
 from time import sleep
+import subprocess
 import asyncio
 # Configurações
 BOT_TOKEN = '7609833263:AAEmDv3ORnSZEEGjA0OHQBGFvXEoeGaYiww'

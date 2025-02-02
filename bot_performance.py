@@ -230,8 +230,7 @@ async def start_rclone(update: Update, context: ContextTypes.DEFAULT_TYPE):
             --vfs-cache-mode full \
             --vfs-cache-max-size 20G \
             --buffer-size 512M \
-            --log-level INFO \
-            --daemon"""
+            --log-level INFO \"""
         
         process = await asyncio.create_subprocess_shell(
             command,

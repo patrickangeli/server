@@ -2,18 +2,17 @@ import psutil
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.ext import Updater, CommandHandler, CallbackContext, Application
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import CallbackQueryHandler, ConversationHandler, MessageHandler, filters
 from threading import Thread
 from time import sleep
 import subprocess
 import asyncio
+
 # Configurações
 BOT_TOKEN = '7609833263:AAEmDv3ORnSZEEGjA0OHQBGFvXEoeGaYiww'
 CHAT_ID = '7609833263'
 LIMITE_CPU = 80
-
-
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackQueryHandler, ConversationHandler, MessageHandler, filters
 
 # Estados para a conversa
 WAITING_FOR_TORRENT = 1
@@ -88,20 +87,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❌ Operação cancelada.")
     return ConversationHandler.END
 
-# Crie o conversation handler
-conv_handler = ConversationHandler(
-    entry_points=[CommandHandler('download', start_download)],
-    states={
-        WAITING_FOR_FOLDER: [CallbackQueryHandler(folder_callback)],
-        WAITING_FOR_TORRENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_torrent)]
-    },
-    fallbacks=[CommandHandler('cancel', cancel)]
-)
-
-# Adicione o handler à aplicação
-application.add_handler(conv_handler)
-
-
 # Configuração moderna
 application = Application.builder().token(BOT_TOKEN).build()
 
@@ -168,7 +153,15 @@ async def start_jellyfin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"🔥 Falha ao iniciar Jellyfin: {str(e)}")
 
-# Adicione o handler
+# Crie o conversation handler
+conv_handler = ConversationHandler(
+    entry_points=[CommandHandler('download', start_download)],
+    states={
+        WAITING_FOR_FOLDER: [CallbackQueryHandler(folder_callback)],
+        WAITING_FOR_TORRENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_torrent)]
+    },
+    fallbacks=[CommandHandler('cancel', cancel)]
+)
 
 
 
@@ -194,6 +187,7 @@ async def restart_jellyfin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"🔥 Falha crítica: {str(e)}")
 
 # Adicione o handler ANTES de iniciar o bot
+application.add_handler(conv_handler)
 application.add_handler(CommandHandler("restart", restart_jellyfin))
 application.add_handler(CommandHandler("getid", get_id))
 application.add_handler(CommandHandler("metrics", metrics))

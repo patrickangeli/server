@@ -1,4 +1,5 @@
 import psutil
+import json
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.ext import Updater, CommandHandler, CallbackContext, Application
@@ -81,6 +82,47 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"🔥 Erro: {str(e)}")
     
     return ConversationHandler.END
+
+async def check_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        command = """curl -X GET http://localhost:8080/api/v2/torrents/info"""
+        
+        process = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            data = json.loads(stdout.decode())
+            if not data:
+                await update.message.reply_text("Nenhum torrent em download.")
+                return
+                
+            status = "📥 Downloads em Andamento:\n\n"
+            for torrent in data:
+                progress = torrent.get('progress', 0) * 100
+                name = torrent.get('name', 'Desconhecido')
+                size = torrent.get('size', 0) / (1024*1024*1024)  # Converter para GB
+                speed = torrent.get('dlspeed', 0) / (1024*1024)  # Converter para MB/s
+                
+                status += (f"📁 {name}\n"
+                          f"▪️ Progresso: {progress:.1f}%\n"
+                          f"▪️ Tamanho: {size:.2f} GB\n"
+                          f"▪️ Velocidade: {speed:.2f} MB/s\n\n")
+            
+            await update.message.reply_text(status)
+        else:
+            await update.message.reply_text(f"❌ Erro ao verificar downloads:\n{stderr.decode().strip()}")
+    
+    except Exception as e:
+        await update.message.reply_text(f"🔥 Falha ao verificar downloads: {str(e)}")
+
+# Adicione o handler
+
+
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancela a operação de download"""
@@ -211,6 +253,7 @@ async def check_cpu(context: ContextTypes.DEFAULT_TYPE):
 if __name__ == "__main__":
     # Remova handlers duplicados e organize-os aqui
     application.add_handler(conv_handler)
+    application.add_handler(CommandHandler("progress", check_progress))
     application.add_handler(CommandHandler("restart", restart_jellyfin))
     application.add_handler(CommandHandler("getid", get_id))
     application.add_handler(CommandHandler("metrics", metrics))

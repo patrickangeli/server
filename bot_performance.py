@@ -132,9 +132,9 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 
                                 await msg.edit_text(status)
                                 
-                                if progress >= 100 or state == 'completed':
+                               if progress >= 100 or state == 'completed':
                                     # Move o arquivo para o rclone
-                                    move_cmd = f"mv '{cache_path}{name}' '{final_path}'"
+                                    move_cmd = f"mv '{os.path.join(cache_path, name)}' '{final_path}'"
                                     move_process = await asyncio.create_subprocess_shell(
                                         move_cmd,
                                         stdout=asyncio.subprocess.PIPE,
@@ -147,6 +147,7 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         f"📦 Arquivo movido para: {final_path}"
                                     )
                                     return ConversationHandler.END
+
                     except json.JSONDecodeError:
                         continue
                 

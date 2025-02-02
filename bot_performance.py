@@ -9,7 +9,7 @@ BOT_TOKEN = '7609833263:AAEmDv3ORnSZEEGjA0OHQBGFvXEoeGaYiww'
 CHAT_ID = '7609833263'
 LIMITE_CPU = 80
 
-Configuração moderna
+# Configuração moderna
 application = Application.builder().token(BOT_TOKEN).build()
 
 # Função de métricas

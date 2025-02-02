@@ -29,6 +29,29 @@ async def metrics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(resposta)
 
+async def restart_jellyfin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        # Executa o comando com sudo
+        process = await asyncio.create_subprocess_shell(
+            "sudo docker restart jellyfin",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        # Captura saída e erros
+        stdout, stderr = await process.communicate()
+        
+        # Resposta personalizada
+        if process.returncode == 0:
+            await update.message.reply_text("✅ Jellyfin reiniciado com sucesso")
+        else:
+            await update.message.reply_text(f"❌ Erro:\n{stderr.decode().strip()}")
+            
+    except Exception as e:
+        await update.message.reply_text(f"🔥 Falha crítica: {str(e)}")
+
+# Adicione o handler ANTES de iniciar o bot
+application.add_handler(CommandHandler("restart", restart_jellyfin))
 application.add_handler(CommandHandler("getid", get_id))
 application.add_handler(CommandHandler("metrics", metrics))
 # Monitoramento contínuo (executado em segundo plano)

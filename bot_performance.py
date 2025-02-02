@@ -52,14 +52,33 @@ async def folder_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return WAITING_FOR_TORRENT
 
 async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Processa o link do torrent recebido"""
+    """Processa o link do torrent recebido e mostra o progresso"""
     torrent_link = update.message.text
     folder = context.user_data['folder']
-    save_path = f"/mnt/rclone/{folder}/"  # Ajuste o caminho conforme necessário
+    save_path = f"/mnt/rclone/{folder}/"
     
     try:
-        # Comando para adicionar o torrent ao qBittorrent
-        command = f"""curl -X POST -F "urls={torrent_link}" -F "savepath={save_path}" \
+        # Login
+        login_cmd = """curl -X POST -c cookie.txt \
+                    -d 'username=admin&password=adminadmin' \
+                    http://localhost:8080/api/v2/auth/login"""
+        
+        login_process = await asyncio.create_subprocess_shell(
+            login_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        login_stdout, login_stderr = await login_process.communicate()
+        
+        if login_process.returncode != 0:
+            await update.message.reply_text("❌ Erro de autenticação no qBittorrent")
+            return ConversationHandler.END
+            
+        # Adiciona o torrent
+        command = f"""curl -X POST -b cookie.txt \
+                  -F "urls={torrent_link}" \
+                  -F "savepath={save_path}" \
                   http://localhost:8080/api/v2/torrents/add"""
         
         process = await asyncio.create_subprocess_shell(
@@ -71,10 +90,53 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
         stdout, stderr = await process.communicate()
         
         if process.returncode == 0:
-            await update.message.reply_text(
+            msg = await update.message.reply_text(
                 f"✅ Torrent adicionado com sucesso!\n"
-                f"📂 Salvando em: {folder}"
+                f"📂 Salvando em: {folder}\n"
+                f"⏳ Iniciando download..."
             )
+            
+            # Loop para mostrar o progresso
+            while True:
+                # Obtém informações do torrent
+                progress_cmd = """curl -b cookie.txt http://localhost:8080/api/v2/torrents/info"""
+                progress_process = await asyncio.create_subprocess_shell(
+                    progress_cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                
+                progress_stdout, progress_stderr = await progress_process.communicate()
+                
+                if progress_process.returncode == 0:
+                    try:
+                        data = json.loads(progress_stdout.decode())
+                        if data:
+                            for torrent in data:
+                                progress = torrent.get('progress', 0) * 100
+                                name = torrent.get('name', 'Desconhecido')
+                                size = torrent.get('size', 0) / (1024*1024*1024)  # GB
+                                speed = torrent.get('dlspeed', 0) / (1024*1024)  # MB/s
+                                state = torrent.get('state', '')
+                                
+                                status = (
+                                    f"📥 Download em andamento:\n"
+                                    f"📁 {name}\n"
+                                    f"▪️ Progresso: {progress:.1f}%\n"
+                                    f"▪️ Tamanho: {size:.2f} GB\n"
+                                    f"▪️ Velocidade: {speed:.2f} MB/s\n"
+                                    f"▪️ Estado: {state}"
+                                )
+                                
+                                await msg.edit_text(status)
+                                
+                                if progress >= 100 or state == 'completed':
+                                    await update.message.reply_text("✅ Download concluído!")
+                                    return ConversationHandler.END
+                    except json.JSONDecodeError:
+                        continue
+                
+                await asyncio.sleep(5)  # Atualiza a cada 5 segundos
         else:
             await update.message.reply_text(f"❌ Erro ao adicionar torrent:\n{stderr.decode().strip()}")
     
@@ -83,43 +145,49 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     return ConversationHandler.END
 
-async def check_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        command = """curl -X GET http://localhost:8080/api/v2/torrents/info"""
+# async def check_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     try:
+#         # Primeiro faz login
+#         login_cmd = """curl -X POST -d 'username=admin&password=adminadmin' http://localhost:8080/api/v2/auth/login"""
+#         await asyncio.create_subprocess_shell(login_cmd)
         
-        process = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
+#         # Depois verifica os torrents
+#         command = """curl --cookie "cookie.txt" http://localhost:8080/api/v2/torrents/info"""
         
-        stdout, stderr = await process.communicate()
+#         process = await asyncio.create_subprocess_shell(
+#             command,
+#             stdout=asyncio.subprocess.PIPE,
+#             stderr=asyncio.subprocess.PIPE
+#         )
         
-        if process.returncode == 0:
-            data = json.loads(stdout.decode())
-            if not data:
-                await update.message.reply_text("Nenhum torrent em download.")
-                return
+#         stdout, stderr = await process.communicate()
+        
+#         if stdout:
+#             data = json.loads(stdout.decode())
+#             if not data:
+#                 await update.message.reply_text("Nenhum torrent em download.")
+#                 return
                 
-            status = "📥 Downloads em Andamento:\n\n"
-            for torrent in data:
-                progress = torrent.get('progress', 0) * 100
-                name = torrent.get('name', 'Desconhecido')
-                size = torrent.get('size', 0) / (1024*1024*1024)  # Converter para GB
-                speed = torrent.get('dlspeed', 0) / (1024*1024)  # Converter para MB/s
+#             status = "📥 Downloads em Andamento:\n\n"
+#             for torrent in data:
+#                 progress = torrent.get('progress', 0) * 100
+#                 name = torrent.get('name', 'Desconhecido')
+#                 size = torrent.get('size', 0) / (1024*1024*1024)  # Converter para GB
+#                 speed = torrent.get('dlspeed', 0) / (1024*1024)  # Converter para MB/s
                 
-                status += (f"📁 {name}\n"
-                          f"▪️ Progresso: {progress:.1f}%\n"
-                          f"▪️ Tamanho: {size:.2f} GB\n"
-                          f"▪️ Velocidade: {speed:.2f} MB/s\n\n")
+#                 status += (f"📁 {name}\n"
+#                           f"▪️ Progresso: {progress:.1f}%\n"
+#                           f"▪️ Tamanho: {size:.2f} GB\n"
+#                           f"▪️ Velocidade: {speed:.2f} MB/s\n\n")
             
-            await update.message.reply_text(status)
-        else:
-            await update.message.reply_text(f"❌ Erro ao verificar downloads:\n{stderr.decode().strip()}")
-    
-    except Exception as e:
-        await update.message.reply_text(f"🔥 Falha ao verificar downloads: {str(e)}")
-
+#             await update.message.reply_text(status)
+#         else:
+#             await update.message.reply_text("❌ Nenhuma resposta do servidor qBittorrent")
+            
+#     except json.JSONDecodeError:
+#         await update.message.reply_text("❌ Erro: Resposta inválida do servidor")
+#     except Exception as e:
+#         await update.message.reply_text(f"🔥 Falha ao verificar downloads: {str(e)}")
 # Adicione o handler
 
 

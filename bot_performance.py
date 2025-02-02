@@ -30,6 +30,33 @@ async def metrics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(resposta)
 
+async def start_rclone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        command = """rclone mount onedrive: /mnt/rclone \
+            --allow-other \
+            --dir-cache-time 96h \
+            --vfs-cache-mode full \
+            --vfs-cache-max-size 20G \
+            --buffer-size 512M \
+            --log-level INFO \
+            --daemon"""  # Adiciona --daemon para rodar em background
+        
+        process = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            await update.message.reply_text("✅ Rclone iniciado com sucesso!")
+        else:
+            await update.message.reply_text(f"❌ Erro ao iniciar Rclone:\n{stderr.decode().strip()}")
+            
+    except Exception as e:
+        await update.message.reply_text(f"🔥 Falha ao iniciar Rclone: {str(e)}")
+
 async def restart_jellyfin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Executa o comando com sudo
@@ -55,6 +82,7 @@ async def restart_jellyfin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application.add_handler(CommandHandler("restart", restart_jellyfin))
 application.add_handler(CommandHandler("getid", get_id))
 application.add_handler(CommandHandler("metrics", metrics))
+application.add_handler(CommandHandler("rclone", start_rclone))
 # Monitoramento contínuo (executado em segundo plano)
 async def monitoramento():
     while True:

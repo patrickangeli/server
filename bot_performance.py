@@ -9,39 +9,38 @@ BOT_TOKEN = '7609833263:AAEmDv3ORnSZEEGjA0OHQBGFvXEoeGaYiww'
 CHAT_ID = '7609833263'
 LIMITE_CPU = 80
 
-# Inicializa o updater do Telegram
+Configuração moderna
 application = Application.builder().token(BOT_TOKEN).build()
-def enviar_alerta(texto: str):
-    updater.bot.send_message(chat_id=CHAT_ID, text=texto)
 
-def monitoramento_cpu():
-    while True:
-        uso_cpu = psutil.cpu_percent(interval=1)
-        
-        if uso_cpu > LIMITE_CPU:
-            alerta = f"🚨 **ALERTA DE CPU** 🚨\nUso atual: {uso_cpu}%"
-            enviar_alerta(alerta)
-        
-        sleep(60)
-
-def metrics(update: Update, context: CallbackContext):
+# Função de métricas
+async def metrics(update, context):
     cpu = psutil.cpu_percent()
     mem = psutil.virtual_memory().percent
     disco = psutil.disk_usage('/').percent
     
     resposta = (
-        f"📈 **Métricas em Tempo Real**\n"
+        f"📊 **Métricas** 📊\n"
         f"• CPU: {cpu}%\n"
-        f"• RAM: {mem}%\n"
+        f"• Memória: {mem}%\n"
         f"• Disco: {disco}%"
     )
-    update.message.reply_text(resposta)
+    await update.message.reply_text(resposta)
 
-# Configura handlers e inicia threads
-updater.dispatcher.add_handler(CommandHandler('metrics', metrics))
-monitor_thread = Thread(target=monitoramento_cpu)
+# Monitoramento contínuo (executado em segundo plano)
+async def monitoramento():
+    while True:
+        uso_cpu = psutil.cpu_percent(interval=1)
+        if uso_cpu > LIMITE_CPU:
+            await application.bot.send_message(
+                chat_id=CHAT_ID,
+                text=f"⚠️ ALERTA DE CPU: {uso_cpu}%"
+            )
+        await asyncio.sleep(60)
 
-# Inicia o sistema
-monitor_thread.start()
-updater.start_polling()
-updater.idle()
+# Configuração dos handlers
+application.add_handler(CommandHandler("metrics", metrics))
+
+# Inicialização do bot
+if __name__ == "__main__":
+    application.job_queue.run_once(lambda _: asyncio.create_task(monitoramento()), when=0)
+    application.run_polling()

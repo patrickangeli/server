@@ -43,10 +43,10 @@ async def folder_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     # Salva a escolha da pasta no contexto
-    context.user_data['folder'] = 'movies' if query.data == 'movies' else 'series'
+    context.user_data['folder'] = 'movies' if query.data == 'Filmes' else 'Series'
     
     await query.edit_message_text(
-        f"📥 Pasta selecionada: {'Filmes' if query.data == 'movies' else 'Séries'}\n"
+        f"📥 Pasta selecionada: {'Filmes' if query.data == 'Filmes' else 'Séries'}\n"
         "Por favor, envie o link do torrent:"
     )
     return WAITING_FOR_TORRENT

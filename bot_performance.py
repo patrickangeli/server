@@ -319,9 +319,11 @@ async def check_cpu(context: ContextTypes.DEFAULT_TYPE):
 
 # Configuração final
 if __name__ == "__main__":
-    # Remova handlers duplicados e organize-os aqui
+    # Remova esta linha
+    # application.add_handler(CommandHandler("progress", check_progress))
+    
+    # Mantenha o resto dos handlers
     application.add_handler(conv_handler)
-    application.add_handler(CommandHandler("progress", check_progress))
     application.add_handler(CommandHandler("restart", restart_jellyfin))
     application.add_handler(CommandHandler("getid", get_id))
     application.add_handler(CommandHandler("metrics", metrics))

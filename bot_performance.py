@@ -22,7 +22,7 @@ WAITING_FOR_FOLDER = 2
 torrent_links = {}
 
 async def start_download(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Inicia o processo de download perguntando onde salvar"""
+    print("Comando /download recebido")  # Adicione este print
     keyboard = [
         [
             InlineKeyboardButton("🎬 Filmes", callback_data='movies'),
@@ -35,7 +35,7 @@ async def start_download(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
     return WAITING_FOR_FOLDER
-
+    
 async def folder_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Processa a escolha da pasta e solicita o link do torrent"""
     query = update.callback_query
@@ -209,7 +209,6 @@ async def check_cpu(context: ContextTypes.DEFAULT_TYPE):
 
 # Configuração final
 if __name__ == "__main__":
-    if __name__ == "__main__":
     # Remova handlers duplicados e organize-os aqui
     application.add_handler(conv_handler)
     application.add_handler(CommandHandler("restart", restart_jellyfin))
@@ -221,5 +220,6 @@ if __name__ == "__main__":
     # Configurar job queue
     application.job_queue.run_repeating(check_cpu, interval=60, first=0)
     
-    # Iniciar o bot
+        # Iniciar o bot
+    print("Bot iniciado...")  # Adicione este print para debug
     application.run_polling()

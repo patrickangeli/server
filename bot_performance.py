@@ -218,6 +218,12 @@ async def metrics(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start_rclone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        # Primeiro mata qualquer processo rclone existente
+        kill_cmd = "pkill -f rclone"
+        await asyncio.create_subprocess_shell(kill_cmd)
+        await asyncio.sleep(2)  # Espera 2 segundos para garantir que o processo foi finalizado
+        
+        # Inicia o rclone
         command = """rclone mount onedrive: /mnt/rclone \
             --allow-other \
             --dir-cache-time 96h \
@@ -225,7 +231,7 @@ async def start_rclone(update: Update, context: ContextTypes.DEFAULT_TYPE):
             --vfs-cache-max-size 20G \
             --buffer-size 512M \
             --log-level INFO \
-            --daemon"""  # Adiciona --daemon para rodar em background
+            --daemon"""
         
         process = await asyncio.create_subprocess_shell(
             command,
@@ -236,7 +242,7 @@ async def start_rclone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         stdout, stderr = await process.communicate()
         
         if process.returncode == 0:
-            await update.message.reply_text("✅ Rclone iniciado com sucesso!")
+            await update.message.reply_text("✅ Rclone reiniciado com sucesso!")
         else:
             await update.message.reply_text(f"❌ Erro ao iniciar Rclone:\n{stderr.decode().strip()}")
             

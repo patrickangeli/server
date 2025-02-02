@@ -1,6 +1,6 @@
 import psutil
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Updater, CommandHandler, CallbackContext, Applications
 from threading import Thread
 from time import sleep
 

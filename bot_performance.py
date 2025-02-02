@@ -10,8 +10,7 @@ CHAT_ID = '7609833263'
 LIMITE_CPU = 80
 
 # Inicializa o updater do Telegram
-updater = Updater(token=BOT_TOKEN, use_context=True)
-
+application = Application.builder().token(BOT_TOKEN).build()
 def enviar_alerta(texto: str):
     updater.bot.send_message(chat_id=CHAT_ID, text=texto)
 

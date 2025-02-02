@@ -43,22 +43,23 @@ async def folder_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     # Salva a escolha da pasta no contexto
-    context.user_data['folder'] = 'movies' if query.data == 'Filmes' else 'Series'
+    context.user_data['folder'] = 'Filmes' if query.data == 'movies' else 'Series'
     
     await query.edit_message_text(
-        f"📥 Pasta selecionada: {'Filmes' if query.data == 'Filmes' else 'Séries'}\n"
+        f"📥 Pasta selecionada: {'Filmes' if query.data == 'movies' else 'Séries'}\n"
         "Por favor, envie o link do torrent:"
     )
     return WAITING_FOR_TORRENT
 
 async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Processa o link do torrent recebido e mostra o progresso"""
+    """Processa o link do torrent recebido"""
     torrent_link = update.message.text
     folder = context.user_data['folder']
-    save_path = f"/mnt/rclone/{folder}/"
+    cache_path = f"/home/patrick/download_cache/{folder}/"  # Caminho do cache local
+    final_path = f"/mnt/rclone/{folder}/"  # Caminho final no rclone
     
     try:
-        # Login
+        # Login no qBittorrent
         login_cmd = """curl -X POST -c cookie.txt \
                     -d 'username=admin&password=adminadmin' \
                     http://localhost:8080/api/v2/auth/login"""
@@ -75,10 +76,11 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Erro de autenticação no qBittorrent")
             return ConversationHandler.END
             
-        # Adiciona o torrent
+        # Adiciona o torrent usando o diretório de cache
         command = f"""curl -X POST -b cookie.txt \
                   -F "urls={torrent_link}" \
-                  -F "savepath={save_path}" \
+                  -F "savepath={cache_path}" \
+                  -F "category={folder}" \
                   http://localhost:8080/api/v2/torrents/add"""
         
         process = await asyncio.create_subprocess_shell(
@@ -92,13 +94,13 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if process.returncode == 0:
             msg = await update.message.reply_text(
                 f"✅ Torrent adicionado com sucesso!\n"
-                f"📂 Salvando em: {folder}\n"
+                f"📂 Baixando em: {cache_path}\n"
+                f"🔄 Será movido para: {final_path}\n"
                 f"⏳ Iniciando download..."
             )
             
             # Loop para mostrar o progresso
             while True:
-                # Obtém informações do torrent
                 progress_cmd = """curl -b cookie.txt http://localhost:8080/api/v2/torrents/info"""
                 progress_process = await asyncio.create_subprocess_shell(
                     progress_cmd,
@@ -131,7 +133,19 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 await msg.edit_text(status)
                                 
                                 if progress >= 100 or state == 'completed':
-                                    await update.message.reply_text("✅ Download concluído!")
+                                    # Move o arquivo para o rclone
+                                    move_cmd = f"mv '{cache_path}{name}' '{final_path}'"
+                                    move_process = await asyncio.create_subprocess_shell(
+                                        move_cmd,
+                                        stdout=asyncio.subprocess.PIPE,
+                                        stderr=asyncio.subprocess.PIPE
+                                    )
+                                    await move_process.communicate()
+                                    
+                                    await update.message.reply_text(
+                                        "✅ Download concluído!\n"
+                                        f"📦 Arquivo movido para: {final_path}"
+                                    )
                                     return ConversationHandler.END
                     except json.JSONDecodeError:
                         continue
@@ -144,6 +158,7 @@ async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"🔥 Erro: {str(e)}")
     
     return ConversationHandler.END
+
 
 # async def check_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #     try:
@@ -230,7 +245,8 @@ async def start_rclone(update: Update, context: ContextTypes.DEFAULT_TYPE):
             --vfs-cache-mode full \
             --vfs-cache-max-size 20G \
             --buffer-size 512M \
-            --log-level INFO \"""
+            --log-level INFO \
+            """
         
         process = await asyncio.create_subprocess_shell(
             command,

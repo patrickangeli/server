@@ -99,12 +99,12 @@ async def metrics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cpu = psutil.cpu_percent()
     mem = psutil.virtual_memory().percent
     disco = psutil.disk_usage('/').percent
-    await update.message.reply_text(
+    resposta = (  # Define a variável resposta
         f"📊 CPU: {cpu}%\n"
         f"💾 Memória: {mem}%\n"
         f"💽 Disco: {disco}%"
     )
-    await update.message.reply_text(resposta)
+    await update.message.reply_text(resposta)  # Envia apenas uma vez
 
 async def start_rclone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:

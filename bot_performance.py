@@ -13,20 +13,24 @@ LIMITE_CPU = 80
 # Configuração moderna
 application = Application.builder().token(BOT_TOKEN).build()
 
-# Função de métricas
-async def metrics(update, context):
+# 1. Defina a função get_id ANTES de usá-la
+async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    await update.message.reply_text(f"📨 Chat ID: {chat_id}")
+
+async def metrics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cpu = psutil.cpu_percent()
     mem = psutil.virtual_memory().percent
     disco = psutil.disk_usage('/').percent
-    
-    resposta = (
-        f"📊 **Métricas** 📊\n"
-        f"• CPU: {cpu}%\n"
-        f"• Memória: {mem}%\n"
-        f"• Disco: {disco}%"
+    await update.message.reply_text(
+        f"📊 CPU: {cpu}%\n"
+        f"💾 Memória: {mem}%\n"
+        f"💽 Disco: {disco}%"
     )
     await update.message.reply_text(resposta)
 
+application.add_handler(CommandHandler("getid", get_id))
+application.add_handler(CommandHandler("metrics", metrics))
 # Monitoramento contínuo (executado em segundo plano)
 async def monitoramento():
     while True:

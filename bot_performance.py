@@ -11,6 +11,97 @@ BOT_TOKEN = '7609833263:AAEmDv3ORnSZEEGjA0OHQBGFvXEoeGaYiww'
 CHAT_ID = '7609833263'
 LIMITE_CPU = 80
 
+
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import CallbackQueryHandler, ConversationHandler, MessageHandler, filters
+
+# Estados para a conversa
+WAITING_FOR_TORRENT = 1
+WAITING_FOR_FOLDER = 2
+
+# Dicionário para armazenar temporariamente os links dos torrents
+torrent_links = {}
+
+async def start_download(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Inicia o processo de download perguntando onde salvar"""
+    keyboard = [
+        [
+            InlineKeyboardButton("🎬 Filmes", callback_data='movies'),
+            InlineKeyboardButton("📺 Séries", callback_data='series')
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        'Escolha onde salvar o download:',
+        reply_markup=reply_markup
+    )
+    return WAITING_FOR_FOLDER
+
+async def folder_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Processa a escolha da pasta e solicita o link do torrent"""
+    query = update.callback_query
+    await query.answer()
+    
+    # Salva a escolha da pasta no contexto
+    context.user_data['folder'] = 'movies' if query.data == 'movies' else 'series'
+    
+    await query.edit_message_text(
+        f"📥 Pasta selecionada: {'Filmes' if query.data == 'movies' else 'Séries'}\n"
+        "Por favor, envie o link do torrent:"
+    )
+    return WAITING_FOR_TORRENT
+
+async def process_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Processa o link do torrent recebido"""
+    torrent_link = update.message.text
+    folder = context.user_data['folder']
+    save_path = f"/mnt/rclone/{folder}/"  # Ajuste o caminho conforme necessário
+    
+    try:
+        # Comando para adicionar o torrent ao qBittorrent
+        command = f"""curl -X POST -F "urls={torrent_link}" -F "savepath={save_path}" \
+                  http://localhost:8080/api/v2/torrents/add"""
+        
+        process = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            await update.message.reply_text(
+                f"✅ Torrent adicionado com sucesso!\n"
+                f"📂 Salvando em: {folder}"
+            )
+        else:
+            await update.message.reply_text(f"❌ Erro ao adicionar torrent:\n{stderr.decode().strip()}")
+    
+    except Exception as e:
+        await update.message.reply_text(f"🔥 Erro: {str(e)}")
+    
+    return ConversationHandler.END
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Cancela a operação de download"""
+    await update.message.reply_text("❌ Operação cancelada.")
+    return ConversationHandler.END
+
+# Crie o conversation handler
+conv_handler = ConversationHandler(
+    entry_points=[CommandHandler('download', start_download)],
+    states={
+        WAITING_FOR_FOLDER: [CallbackQueryHandler(folder_callback)],
+        WAITING_FOR_TORRENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_torrent)]
+    },
+    fallbacks=[CommandHandler('cancel', cancel)]
+)
+
+# Adicione o handler à aplicação
+application.add_handler(conv_handler)
+
+
 # Configuração moderna
 application = Application.builder().token(BOT_TOKEN).build()
 

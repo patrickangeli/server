@@ -7,17 +7,29 @@ jobs:
   process-torrent:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+          
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
       - name: Setup Rclone
         uses: AnimMouse/setup-rclone@v1
         with:
           rclone_config: ${{ secrets.RCLONE_CONFIG }}
-
+          
       - name: Setup qBittorrent
         run: |
           sudo apt-get update
           sudo apt-get install -y qbittorrent-nox
           mkdir -p ~/downloads
-
+          
       - name: Mount Cloud Drives
         run: |
           mkdir -p ~/mnt/{filmes,series}
@@ -33,10 +45,11 @@ jobs:
             --vfs-cache-mode full \
             --vfs-cache-max-size 100G \
             --dir-cache-time 96h
-
+            
       - name: Process Download
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python process_torrent.py
+          MAGNET_LINK: ${{ github.event.client_payload.magnet }}
+          DEST_TYPE: ${{ github.event.client_payload.dest_type }}
+        run: python process_torrent.py

@@ -2,3 +2,5 @@ requests
 speedtest-python
 libtorrent
 python-telegram-bot
+qbittorrent-api
+python-dotenv

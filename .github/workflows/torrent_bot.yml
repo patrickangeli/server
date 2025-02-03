@@ -1,0 +1,42 @@
+name: Torrent Download and Upload
+on:
+  repository_dispatch:
+    types: [torrent_command]
+
+jobs:
+  process-torrent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Rclone
+        uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+      - name: Setup qBittorrent
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qbittorrent-nox
+          mkdir -p ~/downloads
+
+      - name: Mount Cloud Drives
+        run: |
+          mkdir -p ~/mnt/{filmes,series}
+          rclone mount remote:Filmes ~/mnt/filmes \
+            --daemon \
+            --allow-other \
+            --vfs-cache-mode full \
+            --vfs-cache-max-size 100G \
+            --dir-cache-time 96h
+          rclone mount remote:Series ~/mnt/series \
+            --daemon \
+            --allow-other \
+            --vfs-cache-mode full \
+            --vfs-cache-max-size 100G \
+            --dir-cache-time 96h
+
+      - name: Process Download
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python process_torrent.py

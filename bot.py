@@ -7,6 +7,9 @@ from time import sleep
 BOT_TOKEN = "7839021746:AAE9rR_jFzAy1Hw8_puCNzwg1vQpyjjaCxg"
 bot = telebot.TeleBot(BOT_TOKEN)
 
+# Defina a variável chat_id com o ID do chat onde as mensagens serão enviadas
+chat_id = "7839021746"  # Substitua pelo seu chat ID real
+
 # Função para obter dados de voos da OpenSky Network
 def get_opensky_data():
     url = "https://opensky-network.org/api/states/all"
@@ -79,11 +82,13 @@ def monitorar_pouso():
                 if altitude == 0 and flight_id not in voos_pousados:
                     voos_pousados.add(flight_id)
                     mensagem = f"🛬 **O voo {flight_id} acaba de pousar!**"
-                    bot.send_message("SEU_CHAT_ID_AQUI", mensagem)
+                    # Aqui usamos a variável chat_id
+                    bot.send_message(chat_id, mensagem)
 
         sleep(60)  # Verifica a cada minuto
 
-# Inicia o bot
-import threading
+# Inicia o bot em um thread para monitorar o pouso
 threading.Thread(target=monitorar_pouso, daemon=True).start()
+
+# Inicia o polling do bot
 bot.polling()

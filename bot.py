@@ -9,7 +9,7 @@ import threading
 
 # Substitua pelo seu token do Telegram
 BOT_TOKEN = "7839021746:AAE9rR_jFzAy1Hw8_puCNzwg1vQpyjjaCxg"
-chat_id = "7839021746"  # Substitua pelo seu chat ID real
+CHAT_ID = "7839021746"  # Substitua pelo seu chat ID real
 
 # Função para obter dados de voos da OpenSky Network
 def get_opensky_data():

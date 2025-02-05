@@ -26,6 +26,7 @@ jobs:
         pip install folium
         pip install matplotlib
         pip install numpy
+        pip install geopy  # Adicionado geopy
     
     - name: Executar o bot
       env:

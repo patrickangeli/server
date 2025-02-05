@@ -8,7 +8,7 @@ import folium
 import matplotlib.pyplot as plt
 import numpy as np
 import telebot
-from FlightRadar24 import FlightRadar24API
+from flightradar24 import FlightRadar24API
 from PIL import Image
 from telebot.types import InputMediaPhoto
 

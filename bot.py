@@ -1,4 +1,5 @@
 import requests
+import logging
 from geopy.distance import geodesic
 from time import sleep
 import asyncio
@@ -87,8 +88,12 @@ async def monitorar_pouso():
 
         await asyncio.sleep(60)  # Verifica a cada minuto
 
-async def start(update: Update, context: CallbackContext):
-    await update.message.reply_text("Olá! Eu sou o Flight Tracker Bot. Use o comando /voos para obter informações de voos.")
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+async def start(update, context):
+    await update.message.reply_text('Olá! Eu sou seu bot.')
 
 async def main():
     # Cria a aplicação do bot

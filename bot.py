@@ -15,7 +15,7 @@ def get_chat_id(message):
 bot.polling()
 
 # Defina a variável chat_id com o ID do chat onde as mensagens serão enviadas
-chat_id = "7839021746"  # Substitua pelo seu chat ID real
+chat_id = "22750862"  # Substitua pelo seu chat ID real
 
 # Função para obter dados de voos da OpenSky Network
 def get_opensky_data():

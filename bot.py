@@ -1,17 +1,15 @@
-import telebot
 import requests
-import threading
 from geopy.distance import geodesic
 from time import sleep
+import asyncio
+from telegram import Update
+from telegram.ext import Application, CommandHandler, CallbackContext
+from telegram.ext import Updater
+import threading
 
 # Substitua pelo seu token do Telegram
-BOT_TOKEN = '7839021746:AAE9rR_jFzAy1Hw8_puCNzwg1vQpyjjaCxg'
-bot = telebot.TeleBot(BOT_TOKEN)
-@bot.message_handler(func=lambda message: True)
-
-
-# Defina a variável chat_id com o ID do chat onde as mensagens serão enviadas
-chat_id = '7839021746'  # Substitua pelo seu chat ID real
+BOT_TOKEN = "7839021746:AAE9rR_jFzAy1Hw8_puCNzwg1vQpyjjaCxg"
+chat_id = "7839021746"  # Substitua pelo seu chat ID real
 
 # Função para obter dados de voos da OpenSky Network
 def get_opensky_data():
@@ -29,11 +27,10 @@ def calcular_distancia(lat_atual, lon_atual, lat_dest, lon_dest):
     return round(geodesic((lat_atual, lon_atual), (lat_dest, lon_dest)).km, 2)
 
 # Comando /voos - Lista os primeiros 10 voos ativos
-@bot.message_handler(commands=["voos"])
-def send_flight_info(message):
+async def send_flight_info(update: Update, context: CallbackContext):
     flights = get_opensky_data()
     if not flights:
-        bot.send_message(message.chat.id, "⚠️ Erro ao obter dados dos voos.")
+        await update.message.reply_text("⚠️ Erro ao obter dados dos voos.")
         return
 
     reply = "✈️ **Voos em tempo real:**\n\n"
@@ -70,10 +67,10 @@ def send_flight_info(message):
 
         count += 1
 
-    bot.send_message(message.chat.id, reply, parse_mode="Markdown")
+    await update.message.reply_text(reply, parse_mode="Markdown")
 
 # Monitoramento de voos para pouso
-def monitorar_pouso():
+async def monitorar_pouso():
     voos_pousados = set()
     while True:
         flights = get_opensky_data()
@@ -86,12 +83,30 @@ def monitorar_pouso():
                     voos_pousados.add(flight_id)
                     mensagem = f"🛬 **O voo {flight_id} acaba de pousar!**"
                     # Aqui usamos a variável chat_id
-                    bot.send_message(chat_id, mensagem)
+                    await bot.send_message(chat_id, mensagem)
 
-        sleep(60)  # Verifica a cada minuto
+        await asyncio.sleep(60)  # Verifica a cada minuto
 
-# Inicia o bot em um thread para monitorar o pouso
-threading.Thread(target=monitorar_pouso, daemon=True).start()
+async def start(update: Update, context: CallbackContext):
+    await update.message.reply_text("Olá! Eu sou o Flight Tracker Bot. Use o comando /voos para obter informações de voos.")
 
-# Inicia o polling do bot
-bot.polling()
+async def main():
+    # Cria a aplicação do bot
+    application = Application.builder().token(BOT_TOKEN).build()
+
+    # Adiciona o comando /start
+    application.add_handler(CommandHandler("start", start))
+    
+    # Adiciona o comando /voos
+    application.add_handler(CommandHandler("voos", send_flight_info))
+    
+    # Inicia a monitoração de pouso em uma thread separada
+    asyncio.create_task(monitorar_pouso())
+
+    # Inicia o bot
+    print("Bot iniciado...")
+    await application.run_polling()
+
+if __name__ == '__main__':
+    # Rodando o bot com o asyncio
+    asyncio.run(main())

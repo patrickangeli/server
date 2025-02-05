@@ -29,7 +29,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements_air.txt
-    
+        pip install FlightRadar24 || pip install git+https://github.com/JeanExtreme002/FlightRadarAPI.git
     - name: Executar o bot
       env:
         BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}

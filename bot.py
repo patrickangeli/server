@@ -4,7 +4,7 @@ from geopy.distance import geodesic
 from time import sleep
 
 # Substitua pelo seu token do Telegram
-BOT_TOKEN = "SEU_TOKEN_AQUI"
+BOT_TOKEN = "7839021746:AAE9rR_jFzAy1Hw8_puCNzwg1vQpyjjaCxg"
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # Função para obter dados de voos da OpenSky Network

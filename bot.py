@@ -5,17 +5,13 @@ from geopy.distance import geodesic
 from time import sleep
 
 # Substitua pelo seu token do Telegram
-BOT_TOKEN = "7839021746:AAE9rR_jFzAy1Hw8_puCNzwg1vQpyjjaCxg"
+BOT_TOKEN = '7839021746:AAE9rR_jFzAy1Hw8_puCNzwg1vQpyjjaCxg'
 bot = telebot.TeleBot(BOT_TOKEN)
 @bot.message_handler(func=lambda message: True)
-def get_chat_id(message):
-    # Envia o ID do chat para o usuário que enviar qualquer mensagem
-    bot.reply_to(message, f"Seu chat ID é: {message.chat.id}")
 
-bot.polling()
 
 # Defina a variável chat_id com o ID do chat onde as mensagens serão enviadas
-chat_id = "22750862"  # Substitua pelo seu chat ID real
+chat_id = '7839021746'  # Substitua pelo seu chat ID real
 
 # Função para obter dados de voos da OpenSky Network
 def get_opensky_data():

@@ -1,0 +1,45 @@
+name: Flight Tracker Bot
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Run every 5 minutes
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Cache SQLite database
+      uses: actions/cache@v4
+      with:
+        path: |
+          flights.db
+        key: ${{ runner.os }}-database-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-database-
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_air.txt
+    
+    - name: Run bot
+      env:
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      run: python bot.py
+    
+    - name: Commit database changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add flights.db
+        git commit -m "Update flight database" || echo "No changes to commit"
+        git push

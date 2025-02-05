@@ -33,7 +33,7 @@ jobs:
     
     - name: Run bot
       env:
-        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
       run: python bot.py
     
     - name: Commit database changes

@@ -1,0 +1,6 @@
+telebot
+FlightRadar24
+folium
+matplotlib
+numpy
+Pillow

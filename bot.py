@@ -1,6 +1,6 @@
 import telebot
 import requests
-import threads
+import threading
 from geopy.distance import geodesic
 from time import sleep
 

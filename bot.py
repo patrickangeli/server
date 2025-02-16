@@ -42,36 +42,47 @@ async def handle_message(update, context):
             
             download_path = context.user_data.get('download_path', DOWNLOAD_BASE)
             
-            # Conecta ao qBittorrent
-            qb = Client('http://localhost:8080')
-            qb.login('admin', 'adminadmin')  # Credenciais padrão
+            # Conecta ao qBittorrent com autenticação correta
+            qb = Client(
+                host='localhost',
+                port=8080,
+                username='admin',
+                password='adminadmin'
+            )
             
-            # Adiciona o torrent
-            qb.download_from_link(magnet_link, savepath=download_path)
-            
-            # Aguarda alguns segundos para o torrent ser adicionado
-            time.sleep(5)
-            
-            # Obtém o hash do torrent mais recente
-            torrents = qb.torrents()
-            if torrents:
-                torrent = torrents[0]  # Pega o torrent mais recente
+            try:
+                qb.auth_log_in()  # Autenticação correta
                 
-                while True:
-                    # Atualiza o status do torrent
-                    torrent_info = qb.get_torrent(torrent['hash'])
+                # Adiciona o torrent corretamente
+                qb.torrents_add(
+                    urls=magnet_link,
+                    save_path=download_path,
+                    is_paused=False
+                )
+                
+                # Aguarda a adição do torrent
+                time.sleep(2)
+                
+                # Obtém o torrent mais recente
+                torrents = qb.torrents_info(sort='added_on', reverse=True)
+                if torrents:
+                    torrent = torrents[0]
                     
-                    if torrent_info['state'] in ['downloading', 'stalledDL']:
-                        progress = torrent_info['progress'] * 100
-                        await update.message.reply_text(f"📥 Download: {progress:.1f}%")
-                    elif torrent_info['state'] in ['uploading', 'stalledUP', 'completed']:
-                        await update.message.reply_text("✅ Download completo!")
-                        break
-                    
-                    time.sleep(30)
+                    while True:
+                        torrent.refresh()
+                        if torrent.state_enum.is_downloading:
+                            progress = torrent.progress * 100
+                            await update.message.reply_text(f"📥 Download: {progress:.1f}%")
+                        elif torrent.state_enum.is_complete:
+                            await update.message.reply_text("✅ Download completo!")
+                            break
+                        time.sleep(30)
+                            
+            except Exception as e:
+                await update.message.reply_text(f"❌ Erro no qBittorrent: {str(e)}")
                 
     except Exception as e:
-        await update.message.reply_text(f"❌ Erro: {str(e)}")
+        await update.message.reply_text(f"❌ Erro geral: {str(e)}")
 
 def main():
     application = Application.builder().token(os.environ['TELEGRAM_TOKEN']).build()

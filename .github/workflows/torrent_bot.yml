@@ -11,7 +11,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y rclone python3-pip
-          pip3 install python-telegram-bot rclone-python
+          pip3 install python-telegram-bot rclone-python transmission-rpc
           
       - name: Configure Rclone
         env:
@@ -39,7 +39,7 @@ jobs:
           cat > process_torrent.py << 'EOF'
           from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes
           from telegram.ext import filters
-          import transmissionrpc
+          from transmission_rpc import Client
           import os
           import time
           import subprocess
@@ -77,7 +77,7 @@ jobs:
                       await update.message.reply_text("⬇️ Iniciando download...")
                       
                       download_path = context.user_data.get('download_path', '/mnt/drive')
-                      tc = transmissionrpc.Client('localhost', port=9091)
+                      tc = Client('localhost', port=9091)
                       torrent = tc.add_torrent(magnet_link, download_dir=download_path)
                       
                       while True:

@@ -1,55 +1,38 @@
-name: Torrent Download and Upload
+name: Telegram Torrent Bot
 on:
-  repository_dispatch:
-    types: [torrent_command]
+  release:
+    types: [message]
 
 jobs:
-  process-torrent:
+  download:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
-          
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          
-      - name: Setup Rclone
-        uses: AnimMouse/setup-rclone@v1
-        with:
-          rclone_config: ${{ secrets.RCLONE_CONFIG }}
-          
-      - name: Setup qBittorrent
-        run: |
           sudo apt-get update
-          sudo apt-get install -y qbittorrent-nox
-          mkdir -p ~/downloads
+          sudo apt-get install -y rclone python3-pip
+          pip3 install python-telegram-bot rclone-python
           
-      - name: Mount Cloud Drives
-        run: |
-          mkdir -p ~/mnt/{filmes,series}
-          rclone mount remote:Filmes ~/mnt/filmes \
-            --daemon \
-            --allow-other \
-            --vfs-cache-mode full \
-            --vfs-cache-max-size 100G \
-            --dir-cache-time 96h
-          rclone mount remote:Series ~/mnt/series \
-            --daemon \
-            --allow-other \
-            --vfs-cache-mode full \
-            --vfs-cache-max-size 100G \
-            --dir-cache-time 96h
-            
-      - name: Process Download
+      - name: Configure Rclone
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          MAGNET_LINK: ${{ github.event.client_payload.magnet }}
-          DEST_TYPE: ${{ github.event.client_payload.dest_type }}
-        run: python process_torrent.py
+          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG" > ~/.config/rclone/rclone.conf
+          
+      - name: Setup Telegram Bot
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
+          message: "Bot iniciado e pronto para receber torrents"
+          
+      - name: Mount Rclone Drive
+        run: |
+          mkdir /mnt/drive
+          rclone mount remote:path /mnt/drive &
+          
+      - name: Download Torrent
+        run: |
+          python3 process_torrent.py

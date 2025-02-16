@@ -1,117 +1,85 @@
-import requests
-import logging
-from geopy.distance import geodesic
-from time import sleep
-import asyncio
-from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext
-from telegram.ext import Updater
-import threading
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from qbittorrent import Client
+import os
+import time
+from telegram import ReplyKeyboardMarkup
 
-# Substitua pelo seu token do Telegram
-BOT_TOKEN = "7839021746:AAE9rR_jFzAy1Hw8_puCNzwg1vQpyjjaCxg"
-CHAT_ID = "7839021746"  # Substitua pelo seu chat ID real
+# Configurações
+DOWNLOAD_BASE = "/mnt/drive"
+FOLDERS = ["Filmes", "Séries"]
 
-# Função para obter dados de voos da OpenSky Network
-def get_opensky_data():
-    url = "https://opensky-network.org/api/states/all"
-    response = requests.get(url)
-
-    if response.status_code == 200:
-        return response.json()
-    return None
-
-# Função para calcular a distância restante até o destino
-def calcular_distancia(lat_atual, lon_atual, lat_dest, lon_dest):
-    if None in [lat_atual, lon_atual, lat_dest, lon_dest]:
-        return None
-    return round(geodesic((lat_atual, lon_atual), (lat_dest, lon_dest)).km, 2)
-
-# Comando /voos - Lista os primeiros 10 voos ativos
-async def send_flight_info(update: Update, context: CallbackContext):
-    flights = get_opensky_data()
-    if not flights:
-        await update.message.reply_text("⚠️ Erro ao obter dados dos voos.")
-        return
-
-    reply = "✈️ **Voos em tempo real:**\n\n"
-    count = 0
-
-    for flight in flights["states"]:
-        if count >= 10:
-            break
-
-        flight_id = flight[1] if flight[1] else "Desconhecido"
-        origin = flight[2] if flight[2] else "Desconhecida"
-        destination = flight[3] if flight[3] else "Desconhecido"
-        lat = flight[6]  # Latitude
-        lon = flight[5]  # Longitude
-        altitude = flight[7]  # Altitude em metros
-        velocidade = flight[9]  # Velocidade em m/s
-
-        # Calcular distância restante (se houver coordenadas do destino)
-        distancia_restante = calcular_distancia(lat, lon, None, None)  # Adicione coordenadas do destino aqui
-
-        # Estimativa de chegada (se houver velocidade)
-        tempo_chegada = "Indisponível"
-        if distancia_restante and velocidade:
-            tempo_est = (distancia_restante * 1000) / velocidade / 60  # Tempo em minutos
-            tempo_chegada = f"{int(tempo_est)} min"
-
-        reply += f"🛫 **Voo {flight_id}**\n"
-        reply += f"- Origem: {origin}\n"
-        reply += f"- Destino: {destination}\n"
-        reply += f"- 📍 Localização: {lat}, {lon}\n"
-        reply += f"- 📏 Distância restante: {distancia_restante} km\n" if distancia_restante else ""
-        reply += f"- ⏳ Previsão de chegada: {tempo_chegada}\n" if tempo_chegada != "Indisponível" else ""
-        reply += f"- 🛬 Altitude: {altitude} m\n\n"
-
-        count += 1
-
-    await update.message.reply_text(reply, parse_mode="Markdown")
-
-# Monitoramento de voos para pouso
-async def monitorar_pouso():
-    voos_pousados = set()
-    while True:
-        flights = get_opensky_data()
-        if flights:
-            for flight in flights["states"]:
-                flight_id = flight[1] if flight[1] else "Desconhecido"
-                altitude = flight[7]
-
-                if altitude == 0 and flight_id not in voos_pousados:
-                    voos_pousados.add(flight_id)
-                    mensagem = f"🛬 **O voo {flight_id} acaba de pousar!**"
-                    # Aqui usamos a variável chat_id
-                    await bot.send_message(chat_id, mensagem)
-
-        await asyncio.sleep(60)  # Verifica a cada minuto
-
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-logger = logging.getLogger(__name__)
+def create_folder_keyboard():
+    keyboard = [[f"📁 {folder}"] for folder in FOLDERS]
+    return ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
 
 async def start(update, context):
-    await update.message.reply_text('Olá! Eu sou seu bot.')
+    reply_markup = create_folder_keyboard()
+    await update.message.reply_text(
+        "Selecione a pasta para download:",
+        reply_markup=reply_markup
+    )
+    context.user_data['waiting_for_folder'] = True
 
-async def main():
-    # Cria a aplicação do bot
-    application = Application.builder().token(BOT_TOKEN).build()
+async def handle_message(update, context):
+    if context.user_data.get('waiting_for_folder'):
+        selected_folder = update.message.text.replace("📁 ", "")
+        if selected_folder in FOLDERS:
+            download_path = f"{DOWNLOAD_BASE}/{selected_folder}"
+            context.user_data['download_path'] = download_path
+            context.user_data['waiting_for_folder'] = False
+            await update.message.reply_text(
+                f"Pasta selecionada: {selected_folder}\n"
+                "Envie o link magnet ou arquivo torrent."
+            )
+        else:
+            await update.message.reply_text("Por favor, selecione uma pasta válida.")
+        return
 
-    # Adiciona o comando /start
+    try:
+        magnet_link = update.message.text
+        if magnet_link.startswith('magnet:') or magnet_link.endswith('.torrent'):
+            await update.message.reply_text("⬇️ Iniciando download...")
+            
+            download_path = context.user_data.get('download_path', DOWNLOAD_BASE)
+            
+            # Conecta ao qBittorrent
+            qb = Client('http://localhost:8080')
+            qb.login('admin', 'adminadmin')  # Credenciais padrão
+            
+            # Adiciona o torrent
+            qb.download_from_link(magnet_link, savepath=download_path)
+            
+            # Aguarda alguns segundos para o torrent ser adicionado
+            time.sleep(5)
+            
+            # Obtém o hash do torrent mais recente
+            torrents = qb.torrents()
+            if torrents:
+                torrent = torrents[0]  # Pega o torrent mais recente
+                
+                while True:
+                    # Atualiza o status do torrent
+                    torrent_info = qb.get_torrent(torrent['hash'])
+                    
+                    if torrent_info['state'] in ['downloading', 'stalledDL']:
+                        progress = torrent_info['progress'] * 100
+                        await update.message.reply_text(f"📥 Download: {progress:.1f}%")
+                    elif torrent_info['state'] in ['uploading', 'stalledUP', 'completed']:
+                        await update.message.reply_text("✅ Download completo!")
+                        break
+                    
+                    time.sleep(30)
+                
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erro: {str(e)}")
+
+def main():
+    application = Application.builder().token(os.environ['TELEGRAM_TOKEN']).build()
+    
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # Adiciona o comando /voos
-    application.add_handler(CommandHandler("voos", send_flight_info))
-    
-    # Inicia a monitoração de pouso em uma thread separada
-    asyncio.create_task(monitorar_pouso())
-
-    # Inicia o bot
-    print("Bot iniciado...")
-    await application.run_polling()
+    application.run_polling()
 
 if __name__ == '__main__':
-    # Rodando o bot com o asyncio
-    asyncio.run(main())
+    main()

@@ -32,7 +32,7 @@ jobs:
         run: |
           sudo mkdir -p /mnt/drive
           sudo chmod 777 /mnt/drive
-          rclone mount remote:/ /mnt/drive --daemon
+          rclone mount onedrive:/ /mnt/drive --daemon
           
       - name: Create Process Script
         run: |

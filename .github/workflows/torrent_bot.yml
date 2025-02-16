@@ -1,7 +1,7 @@
 name: Telegram Torrent Bot
+
 on:
-  release:
-    types: [message]
+  workflow_dispatch:
 
 jobs:
   download:

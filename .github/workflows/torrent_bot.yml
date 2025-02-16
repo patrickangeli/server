@@ -30,8 +30,9 @@ jobs:
           
       - name: Mount Rclone Drive
         run: |
+          sudo chown -R $USER:$USER /mnt
           mkdir /mnt/drive
-          rclone mount remote:path /mnt/drive &
+          rclone mount onedrive:/mnt/drive &
           
       - name: Download Torrent
         run: |

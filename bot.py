@@ -1,5 +1,5 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
-from qbittorrent import Client
+from qbittorrentapi import Client
 import os
 import time
 from telegram import ReplyKeyboardMarkup

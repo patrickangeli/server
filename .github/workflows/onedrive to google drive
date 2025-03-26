@@ -1,0 +1,62 @@
+name: Transfer OneDrive to Google Drive
+
+on:
+  workflow_dispatch:  # Permite rodar manualmente
+  schedule:
+    - cron: '0 3 * * *'  # Roda todo dia às 03:00 UTC (modifique se necessário)
+
+jobs:
+  transfer-files:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔹 Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: 🔹 Instalar Rclone
+        run: |
+          sudo apt update
+          sudo apt install -y rclone
+
+      - name: 🔹 Configurar Rclone (via Secret)
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG" > ~/.config/rclone/rclone.conf
+        env:
+          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
+
+      - name: 🔹 Verificar espaço disponível na instância
+        id: check_space
+        run: |
+          FREE_SPACE=$(df --output=avail -k / | tail -n1)
+          FREE_SPACE_MB=$((FREE_SPACE / 1024))  # Converte para MB
+          echo "Espaço disponível: ${FREE_SPACE_MB}MB"
+          echo "FREE_SPACE_MB=${FREE_SPACE_MB}" >> $GITHUB_ENV
+
+      - name: 🔹 Criar diretório temporário
+        run: mkdir -p /tmp/Transferencia
+
+      - name: 🔹 Listar arquivos já existentes no Google Drive
+        run: |
+          rclone ls gdrive:Filmes_Backup > /tmp/gdrive_filmes.txt
+          rclone ls gdrive:Series_Backup > /tmp/gdrive_series.txt
+          echo "Arquivos no Google Drive listados."
+
+      - name: 🔹 Baixar arquivos do OneDrive respeitando limite de espaço
+        run: |
+          MAX_SIZE_MB=$(( ${{ env.FREE_SPACE_MB }} - 500 ))  # Deixa 500MB de folga
+          echo "Baixando no máximo ${MAX_SIZE_MB}MB de arquivos."
+
+          rclone copy onedrive:Filmes/ /tmp/Transferencia \
+            --progress --ignore-existing --max-size ${MAX_SIZE_MB}M
+          
+          rclone copy onedrive:Series/ /tmp/Transferencia \
+            --progress --ignore-existing --max-size ${MAX_SIZE_MB}M
+
+      - name: 🔹 Copiar arquivos para o Google Drive
+        run: |
+          rclone copy /tmp/Transferencia gdrive:Filmes_Backup --progress --ignore-existing
+          rclone copy /tmp/Transferencia gdrive:Series_Backup --progress --ignore-existing
+
+      - name: 🔹 Limpar arquivos temporários
+        run: rm -rf /tmp/Transferencia

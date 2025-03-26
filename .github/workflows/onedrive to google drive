@@ -38,8 +38,8 @@ jobs:
 
       - name: 🔹 Listar arquivos já existentes no Google Drive
         run: |
-          rclone ls gdrive:Filmes_Backup > /tmp/gdrive_filmes.txt
-          rclone ls gdrive:Series_Backup > /tmp/gdrive_series.txt
+          rclone ls drive:Filmes > /tmp/gdrive_filmes.txt
+          rclone ls drive:Series > /tmp/gdrive_series.txt
           echo "Arquivos no Google Drive listados."
 
       - name: 🔹 Baixar arquivos do OneDrive respeitando limite de espaço
@@ -55,8 +55,8 @@ jobs:
 
       - name: 🔹 Copiar arquivos para o Google Drive
         run: |
-          rclone copy /tmp/Transferencia gdrive:Filmes_Backup --progress --ignore-existing
-          rclone copy /tmp/Transferencia gdrive:Series_Backup --progress --ignore-existing
+          rclone copy /tmp/Transferencia drive:Filmes --progress --ignore-existing
+          rclone copy /tmp/Transferencia drive:Series --progress --ignore-existing
 
       - name: 🔹 Limpar arquivos temporários
         run: rm -rf /tmp/Transferencia
